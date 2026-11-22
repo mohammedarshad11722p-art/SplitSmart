@@ -8,6 +8,7 @@ import { env } from "./config/env";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { billsRouter } from "./routes/bills.routes";
 import { healthRouter } from "./routes/health.routes";
+import { roomsRouter } from "./routes/rooms.routes";
 
 export function createApp() {
   const app = express();
@@ -27,7 +28,7 @@ export function createApp() {
   // ── Routes ──
   app.use("/api/health", healthRouter);
   app.use("/api/bills", billsRouter);
-  // step 4: app.use("/api/rooms", roomsRouter);
+  app.use("/api/rooms", roomsRouter);
 
   // ── Errors (must be registered last) ──
   app.use(notFoundHandler);

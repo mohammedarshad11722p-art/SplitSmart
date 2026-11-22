@@ -124,9 +124,10 @@ model Participant {
   avatarEmoji   String?       // optional fun touch
   isHost        Boolean       @default(false)
 
-  // Random token stored in the guest's localStorage so a page refresh
-  // or flaky mobile connection reconnects them as the same person.
-  sessionToken  String        @unique
+  // The guest's browser keeps a random token in localStorage so a page
+  // refresh or flaky mobile connection reconnects them as the same person.
+  // Like the host token, we store only its SHA-256 hash.
+  sessionTokenHash String     @unique
 
   // Filled in when the host finalizes, so the UPI link amount never
   // changes after it has been shared.

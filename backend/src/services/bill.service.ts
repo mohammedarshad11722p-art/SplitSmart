@@ -7,7 +7,7 @@ import { getBillParser, BillParseError } from "../lib/ai";
 import { uploadBillImage } from "../lib/cloudinary";
 import { prisma } from "../lib/prisma";
 import { AppError } from "../middleware/errorHandler";
-import { generateHostToken, hashHostToken } from "../utils/hostToken";
+import { generateToken, hashToken } from "../utils/tokens";
 import { checkTotals, normalizeParsedBill, type BillTotals, type TotalsCheck } from "./billMath";
 
 type BillWithItems = Bill & { items: Item[] };
@@ -62,13 +62,13 @@ export async function createBillFromImage(fileBuffer: Buffer) {
   // With AI_PROVIDER=mock and no Cloudinary keys we skip the upload, so the
   // backup demo works fully offline. (env.ts requires Cloudinary for Claude.)
   const image = env.cloudinaryConfigured ? await uploadBillImage(fileBuffer) : null;
-  const hostToken = generateHostToken();
+  const hostToken = generateToken();
 
   const bill = await prisma.bill.create({
     data: {
       imageUrl: image?.url ?? null,
       imagePublicId: image?.publicId ?? null,
-      hostTokenHash: hashHostToken(hostToken),
+      hostTokenHash: hashToken(hostToken),
       parseStatus: "PENDING",
     },
   });
@@ -115,9 +115,9 @@ export async function createBillFromImage(fileBuffer: Buffer) {
 
 /** Plan B: host skips the photo and types items in. */
 export async function createManualBill(restaurantName?: string) {
-  const hostToken = generateHostToken();
+  const hostToken = generateToken();
   const bill = await prisma.bill.create({
-    data: { hostTokenHash: hashHostToken(hostToken), parseStatus: "MANUAL", restaurantName: restaurantName ?? null },
+    data: { hostTokenHash: hashToken(hostToken), parseStatus: "MANUAL", restaurantName: restaurantName ?? null },
     include: { items: true },
   });
   return { hostToken, bill: toBillDto(bill) };

@@ -20,14 +20,14 @@ export function Avatar({
     <span className="relative inline-flex shrink-0">
       <span
         title={person.name}
-        className={`inline-flex items-center justify-center rounded-full font-bold text-white ${sizes[size]} ${ring ? "ring-2 ring-white" : ""}`}
+        className={`inline-flex items-center justify-center rounded-full font-semibold text-white ${sizes[size]} ${ring ? "ring-2 ring-white" : ""}`}
         style={{ backgroundColor: person.avatarColor }}
       >
         {person.avatarEmoji ?? person.name.charAt(0).toUpperCase()}
       </span>
       {online !== undefined && (
         <span
-          className={`absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full ring-2 ring-white ${online ? "bg-emerald-500" : "bg-stone-300"}`}
+          className={`absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full ring-2 ring-white ${online ? "bg-emerald-500" : "bg-faint"}`}
           aria-label={online ? "online" : "offline"}
         />
       )}
@@ -55,7 +55,7 @@ export function AvatarStack({ people, max = 5 }: { people: Participant[]; max?: 
         ))}
       </AnimatePresence>
       {extra > 0 && (
-        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-stone-200 text-xs font-bold text-stone-700 ring-2 ring-white">
+        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-wash text-xs font-semibold text-muted ring-2 ring-white">
           +{extra}
         </span>
       )}

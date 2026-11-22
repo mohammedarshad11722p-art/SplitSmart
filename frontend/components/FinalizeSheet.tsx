@@ -27,11 +27,11 @@ export function FinalizeSheet({
   return (
     <Sheet open={open} onClose={onClose} title="Ready to finalize?">
       {!preview ? (
-        <p className="text-stone-500">Calculating…</p>
+        <p className="text-muted">Calculating…</p>
       ) : (
         <div className="space-y-4">
           {unclaimed.length > 0 && (
-            <div className="rounded-2xl bg-amber-50 p-4 text-sm text-amber-900 ring-1 ring-amber-200">
+            <div className="rounded-2xl border border-amber-200/70 bg-amber-50/60 p-4 text-sm text-amber-900">
               <p className="font-semibold">
                 {unclaimed.length} item{unclaimed.length > 1 ? "s" : ""} nobody claimed:
               </p>
@@ -46,26 +46,26 @@ export function FinalizeSheet({
             </div>
           )}
           {mismatch && (
-            <div className="rounded-2xl bg-red-50 p-4 text-sm text-red-900 ring-1 ring-red-200">
+            <div className="rounded-2xl border border-red-200/70 bg-red-50/60 p-4 text-sm text-red-900">
               Items add up to {formatINR(mismatch.itemsTotal)} but the bill&apos;s subtotal is {formatINR(mismatch.subtotal)}. Everyone will still pay
               their share of the real total ({formatINR(preview.split.grandTotal)}).
             </div>
           )}
 
-          <ul className="divide-y divide-stone-100 rounded-2xl bg-stone-50 px-4">
+          <ul className="card divide-y divide-line px-4">
             {preview.split.people.map((p) => (
               <li key={p.participantId} className="flex justify-between py-3">
                 <span className="font-medium">{p.name}</span>
-                <span className="font-semibold tabular-nums">{formatINR(p.total)}</span>
+                <span className="tabular-nums">{formatINR(p.total)}</span>
               </li>
             ))}
-            <li className="flex justify-between py-3 font-bold">
+            <li className="flex justify-between py-3 font-semibold">
               <span>Total</span>
               <span className="tabular-nums">{formatINR(preview.split.grandTotal)}</span>
             </li>
           </ul>
 
-          <p className="text-sm text-stone-500">After this, items are locked and everyone sees what they owe.</p>
+          <p className="text-sm text-muted">After this, items are locked and everyone sees what they owe.</p>
           <Button full loading={busy} onClick={() => onConfirm(hasWarnings)}>
             {hasWarnings ? "Finalize anyway" : "Finalize split"}
           </Button>

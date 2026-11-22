@@ -6,9 +6,9 @@ import { Spinner } from "./Spinner";
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 
 const styles: Record<Variant, string> = {
-  primary: "bg-orange-500 text-white shadow-md shadow-orange-500/25 hover:bg-orange-600",
-  secondary: "bg-white text-stone-900 ring-1 ring-stone-200 hover:bg-stone-50",
-  ghost: "bg-transparent text-stone-600 hover:bg-stone-100",
+  primary: "bg-ink text-white hover:bg-ink/90",
+  secondary: "border border-line bg-white text-ink hover:bg-wash",
+  ghost: "bg-transparent text-muted hover:bg-wash hover:text-ink",
   danger: "bg-red-50 text-red-700 hover:bg-red-100",
 };
 
@@ -21,14 +21,14 @@ interface Props extends HTMLMotionProps<"button"> {
 export function Button({ variant = "primary", loading, full, className = "", disabled, children, ...rest }: Props) {
   return (
     <motion.button
-      whileTap={{ scale: disabled || loading ? 1 : 0.97 }}
+      whileTap={{ scale: disabled || loading ? 1 : 0.98 }}
       disabled={disabled || loading}
-      className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl px-5 text-base font-semibold transition-colors disabled:opacity-50 ${
+      className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 text-[15px] font-semibold transition-colors disabled:opacity-40 ${
         styles[variant]
       } ${full ? "w-full" : ""} ${className}`}
       {...rest}
     >
-      {loading && <Spinner />}
+      {loading && <Spinner className="h-4 w-4" />}
       {children as React.ReactNode}
     </motion.button>
   );

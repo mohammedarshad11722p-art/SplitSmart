@@ -14,8 +14,8 @@ export default function JoinByCodePage() {
 
   return (
     <PageShell>
-      <h1 className="pt-8 text-3xl font-extrabold">Join a split</h1>
-      <p className="mt-2 text-stone-600">Type the 6-character code on the host&apos;s screen.</p>
+      <h1 className="pt-10 text-3xl font-semibold tracking-tight">Join a split</h1>
+      <p className="mt-2 text-muted">Type the 6-character code on the host&apos;s screen.</p>
       <form
         className="mt-8 space-y-4"
         onSubmit={(e) => {
@@ -32,7 +32,7 @@ export default function JoinByCodePage() {
           autoComplete="off"
           inputMode="text"
           aria-label="Room code"
-          className="w-full rounded-2xl bg-white px-4 py-4 text-center font-mono text-3xl tracking-[0.4em] uppercase ring-1 ring-stone-200 outline-none focus:ring-2 focus:ring-orange-500"
+          className="field py-5 text-center font-mono text-3xl tracking-[0.4em] uppercase placeholder:text-line"
         />
         {code.length === 6 && !valid && <p className="text-sm text-red-600">Codes never contain 0, O, 1, I or L. Check the host&apos;s screen?</p>}
         <Button full type="submit" disabled={!valid}>

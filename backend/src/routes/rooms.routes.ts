@@ -14,7 +14,7 @@ import { z } from "zod";
 import { AppError, asyncHandler } from "../middleware/errorHandler";
 import { requireHost, requireRoomHost } from "../middleware/hostAuth";
 import * as roomService from "../services/room.service";
-import { ServerEvents, emitToRoom } from "../socket";
+import { disconnectParticipant, emitToRoom } from "../realtime/broadcast";
 import { normalizeRoomCode } from "../utils/roomCode";
 
 export const roomsRouter = Router();
@@ -89,8 +89,8 @@ roomsRouter.post(
     const code = req.params.code!;
     const result = await roomService.joinRoom(code, input);
     if (!result.rejoined) {
-      // Everyone already in the room sees the new avatar pop in (step 5 wires up listeners).
-      emitToRoom(req.app, code, ServerEvents.participantJoined, result.me);
+      // Everyone already in the room sees the new avatar pop in.
+      emitToRoom(req.app, code, "participant:joined", result.me);
     }
     res.status(result.rejoined ? 200 : 201).json(result);
   }),
@@ -125,7 +125,7 @@ roomsRouter.patch(
   asyncHandler(async (req, res) => {
     const patch = updateSchema.parse(req.body);
     const state = await roomService.updateRoom(req.params.code!, patch);
-    emitToRoom(req.app, state.room.code, ServerEvents.roomUpdated, state.room);
+    emitToRoom(req.app, state.room.code, "room:updated", state.room);
     res.json(state);
   }),
 );
@@ -137,7 +137,8 @@ roomsRouter.delete(
     const code = req.params.code!;
     const participantId = req.params.participantId!;
     await roomService.removeParticipant(code, participantId);
-    emitToRoom(req.app, code, ServerEvents.participantRemoved, { participantId });
+    emitToRoom(req.app, code, "participant:removed", { participantId });
+    await disconnectParticipant(req.app, code, participantId); // kick their phone out
     res.status(204).end();
   }),
 );

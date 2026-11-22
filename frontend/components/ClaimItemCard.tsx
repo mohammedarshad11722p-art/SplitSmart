@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { formatINR } from "@/lib/format";
 import type { Participant, RoomItem } from "@/lib/types";
 import { AvatarStack } from "./Avatar";
+import { Icon } from "./Icon";
 
 export function ClaimItemCard({
   item,
@@ -24,32 +25,32 @@ export function ClaimItemCard({
   return (
     <motion.li layout>
       <motion.button
-        whileTap={{ scale: disabled ? 1 : 0.97 }}
+        whileTap={{ scale: disabled ? 1 : 0.985 }}
         onClick={onToggle}
         disabled={disabled}
         aria-pressed={mine}
-        className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors ${
-          mine ? "bg-orange-50 ring-2 ring-orange-400" : claimers.length === 0 ? "bg-white ring-1 ring-stone-200" : "bg-white ring-1 ring-stone-100"
+        className={`flex w-full items-center gap-3.5 rounded-2xl border bg-white px-4 py-3.5 text-left transition-colors ${
+          mine ? "border-ink shadow-[0_0_0_1px_var(--color-ink)]" : "border-line hover:border-faint"
         }`}
       >
         <motion.span
-          animate={{ scale: mine ? 1 : 0.85, backgroundColor: mine ? "#f97316" : "#ffffff" }}
-          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ring-2 ${mine ? "ring-orange-500" : "ring-stone-300"}`}
+          animate={{ backgroundColor: mine ? "#1c1b19" : "#ffffff", borderColor: mine ? "#1c1b19" : "#d6d2cc" }}
+          className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border-[1.5px]"
         >
-          {mine && <span className="text-xs font-bold text-white">✓</span>}
+          {mine && <Icon name="check" className="h-3.5 w-3.5 text-white" strokeWidth={2.5} />}
         </motion.span>
 
         <span className="min-w-0 flex-1">
-          <span className="block truncate font-semibold">{item.name}</span>
-          <span className="text-sm text-stone-500">
+          <span className="block truncate font-medium">{item.name}</span>
+          <span className="text-[13px] text-muted">
             {item.quantity > 1 ? `${item.quantity} × ${formatINR(item.unitPrice)}` : formatINR(item.total)}
-            {each !== null && <span className="text-orange-600"> · {formatINR(each)} each</span>}
+            {each !== null && <span className="text-accent"> · {formatINR(each)} each</span>}
           </span>
         </span>
 
         <span className="flex flex-col items-end gap-1">
-          <span className="font-semibold tabular-nums">{formatINR(item.total)}</span>
-          {claimers.length > 0 ? <AvatarStack people={claimers} /> : <span className="text-xs font-medium text-amber-600">Unclaimed</span>}
+          <span className="font-medium tabular-nums">{formatINR(item.total)}</span>
+          {claimers.length > 0 ? <AvatarStack people={claimers} /> : <span className="text-[11px] font-medium text-faint">Unclaimed</span>}
         </span>
       </motion.button>
     </motion.li>

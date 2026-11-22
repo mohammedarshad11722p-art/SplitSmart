@@ -5,6 +5,7 @@ import { AnimatePresence } from "motion/react";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/Button";
+import { Icon } from "@/components/Icon";
 import { ItemEditor, type ItemDraft } from "@/components/ItemEditor";
 import { MoneyInput } from "@/components/MoneyInput";
 import { CenteredMessage, PageShell } from "@/components/PageShell";
@@ -54,7 +55,7 @@ export default function EditBillPage() {
   );
 
   if (loadError) return <PageShell><CenteredMessage emoji="😕" title="Bill not found">{loadError}</CenteredMessage></PageShell>;
-  if (!bill) return <PageShell><div className="flex justify-center pt-24"><Spinner className="h-8 w-8 text-orange-500" /></div></PageShell>;
+  if (!bill) return <PageShell><div className="flex justify-center pt-24"><Spinner className="h-6 w-6 text-faint" /></div></PageShell>;
   if (!hostToken) {
     return (
       <PageShell>
@@ -77,8 +78,8 @@ export default function EditBillPage() {
       bottomBar={
         <div className="flex items-center gap-3">
           <div className="flex-1">
-            <div className="text-xs text-stone-500">Bill total</div>
-            <div className="text-xl font-extrabold tabular-nums">{formatINR(bill.grandTotal)}</div>
+            <div className="eyebrow">Bill total</div>
+            <div className="mt-0.5 text-xl font-semibold tracking-tight tabular-nums">{formatINR(bill.grandTotal)}</div>
           </div>
           <Button onClick={() => setStartOpen(true)} disabled={bill.items.length === 0}>
             Start the split →
@@ -86,7 +87,7 @@ export default function EditBillPage() {
         </div>
       }
     >
-      <div className="flex items-start justify-between gap-3 pt-4">
+      <div className="flex items-start justify-between gap-4 pt-6">
         <div className="min-w-0">
           <input
             aria-label="Restaurant name"
@@ -96,12 +97,12 @@ export default function EditBillPage() {
               const name = e.target.value.trim() || null;
               if (name !== bill.restaurantName) mutate(() => api.updateBill(bill.id, hostToken, { restaurantName: name })).catch(() => {});
             }}
-            className="w-full bg-transparent text-2xl font-extrabold outline-none placeholder:text-stone-300"
+            className="w-full bg-transparent text-[28px] font-semibold tracking-tight outline-none placeholder:text-line"
           />
-          <p className="text-sm text-stone-500">Check the items, then start the split.</p>
+          <p className="mt-0.5 text-sm text-muted">Check the items, then start the split.</p>
         </div>
         {bill.imageUrl && (
-          <button onClick={() => setShowPhoto(true)} className="shrink-0 overflow-hidden rounded-xl ring-1 ring-stone-200">
+          <button onClick={() => setShowPhoto(true)} className="shrink-0 overflow-hidden rounded-xl border border-line bg-white">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={bill.imageUrl} alt="Bill photo" className="h-14 w-14 object-cover" />
           </button>
@@ -109,29 +110,29 @@ export default function EditBillPage() {
       </div>
 
       {/* Warnings */}
-      <div className="mt-4 space-y-2">
+      <div className="mt-5 space-y-2">
         {bill.parseStatus === "FAILED" && (
-          <div className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200">
+          <div className="rounded-xl border border-amber-200/70 bg-amber-50/60 px-4 py-3 text-sm text-amber-900">
             We couldn&apos;t read the photo. Add the items below, it only takes a minute.
           </div>
         )}
         {printedTotals && !v.itemsMatchSubtotal && (
-          <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-900 ring-1 ring-red-200">
+          <div className="rounded-xl border border-red-200/70 bg-red-50/60 px-4 py-3 text-sm text-red-900">
             <strong>Items don&apos;t add up.</strong> They total {formatINR(v.itemsSum)}, but the bill&apos;s subtotal is{" "}
             {formatINR(bill.subtotal)} ({v.itemsDiff > 0 ? "+" : "−"}
             {formatINR(Math.abs(v.itemsDiff))}). A price was probably misread: compare with the photo.
           </div>
         )}
         {printedTotals && v.itemsMatchSubtotal && bill.items.length > 0 && (
-          <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900 ring-1 ring-emerald-200">
-            ✓ Items match the bill&apos;s subtotal.
+          <div className="flex items-center gap-2 text-sm text-emerald-700">
+            <Icon name="check" className="h-4 w-4" strokeWidth={2.25} /> Items match the bill&apos;s subtotal.
           </div>
         )}
       </div>
 
       {/* Items */}
-      <h2 className="mt-6 mb-2 text-sm font-bold tracking-wide text-stone-500 uppercase">Items ({bill.items.length})</h2>
-      <ul className="space-y-2">
+      <h2 className="eyebrow mt-8 mb-3">Items ({bill.items.length})</h2>
+      <ul className="card divide-y divide-line overflow-hidden">
         <AnimatePresence initial={false}>
           {bill.items.map((item) => (
             <ItemEditor
@@ -152,14 +153,17 @@ export default function EditBillPage() {
           }}
         />
       ) : (
-        <button onClick={() => setAdding(true)} className="mt-2 w-full rounded-2xl border-2 border-dashed border-stone-200 py-3 font-semibold text-stone-500 active:bg-stone-50">
+        <button
+          onClick={() => setAdding(true)}
+          className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-faint/70 py-3 text-sm font-medium text-muted transition-colors hover:border-ink hover:text-ink"
+        >
           + Add item
         </button>
       )}
 
       {/* Charges */}
-      <h2 className="mt-8 mb-2 text-sm font-bold tracking-wide text-stone-500 uppercase">Charges</h2>
-      <div className="space-y-2 rounded-2xl bg-white p-4 ring-1 ring-stone-100">
+      <h2 className="eyebrow mt-10 mb-3">Charges</h2>
+      <div className="card space-y-2.5 p-4">
         {printedTotals && <ChargeRow label="Subtotal (as printed)" value={bill.subtotal} onChange={(p) => updateCharge("subtotal", p)} />}
         <ChargeRow label="Tax (GST etc.)" value={bill.tax} onChange={(p) => updateCharge("tax", p)} />
         <ChargeRow label="Service charge" value={bill.serviceCharge} onChange={(p) => updateCharge("serviceCharge", p)} />
@@ -167,13 +171,13 @@ export default function EditBillPage() {
         {printedTotals ? (
           <ChargeRow label="Grand total (as printed)" value={bill.grandTotal} onChange={(p) => updateCharge("grandTotal", p)} bold />
         ) : (
-          <div className="flex items-center justify-between border-t border-stone-100 pt-2 font-bold">
+          <div className="flex items-center justify-between border-t border-line pt-3 font-semibold">
             <span>Grand total</span>
             <span className="tabular-nums">{formatINR(bill.grandTotal)}</span>
           </div>
         )}
         {printedTotals && !v.grandTotalMatches && (
-          <p className="text-xs text-stone-500">
+          <p className="text-xs leading-relaxed text-muted">
             Charges add up to {formatINR(v.computedGrandTotal)}; the printed total differs by {formatINR(Math.abs(v.grandTotalDiff))}{" "}
             (usually a round-off). It&apos;s shared fairly in the split.
           </p>
@@ -182,7 +186,7 @@ export default function EditBillPage() {
 
       <Sheet open={showPhoto} onClose={() => setShowPhoto(false)} title="Bill photo">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        {bill.imageUrl && <img src={bill.imageUrl} alt="Bill photo" className="w-full rounded-2xl" />}
+        {bill.imageUrl && <img src={bill.imageUrl} alt="Bill photo" className="w-full rounded-xl border border-line" />}
       </Sheet>
 
       <StartRoomSheet
@@ -216,8 +220,8 @@ export default function EditBillPage() {
 function ChargeRow({ label, value, onChange, bold }: { label: string; value: number; onChange: (p: number | null) => void; bold?: boolean }) {
   const [draft, setDraft] = useState<number | null>(value);
   return (
-    <div className={`flex items-center justify-between gap-3 ${bold ? "border-t border-stone-100 pt-2 font-bold" : ""}`}>
-      <span className="text-sm">{label}</span>
+    <div className={`flex items-center justify-between gap-3 ${bold ? "border-t border-line pt-3 font-semibold" : ""}`}>
+      <span className={`text-sm ${bold ? "" : "text-ink/80"}`}>{label}</span>
       <div onBlur={() => onChange(draft)} className="w-36">
         <MoneyInput label={label} value={value} onChange={setDraft} />
       </div>
@@ -234,7 +238,7 @@ function AddItemForm({ onAdd, onCancel }: { onAdd: (d: ItemDraft) => Promise<voi
 
   return (
     <form
-      className="mt-2 space-y-3 rounded-2xl bg-orange-50 p-4 ring-2 ring-orange-200"
+      className="card mt-2.5 space-y-3 p-4"
       onSubmit={async (e) => {
         e.preventDefault();
         if (!valid) return;
@@ -252,7 +256,7 @@ function AddItemForm({ onAdd, onCancel }: { onAdd: (d: ItemDraft) => Promise<voi
         aria-label="New item name"
         value={name}
         onChange={(e) => setName(e.target.value)}
-        className="w-full rounded-xl bg-white px-3 py-2.5 ring-1 ring-stone-200 outline-none focus:ring-2 focus:ring-orange-500"
+        className="field py-2.5"
       />
       <div className="flex items-center gap-2">
         <input
@@ -262,16 +266,16 @@ function AddItemForm({ onAdd, onCancel }: { onAdd: (d: ItemDraft) => Promise<voi
           aria-label="Quantity"
           value={quantity}
           onChange={(e) => setQuantity(Math.max(1, Math.min(999, Number(e.target.value) || 1)))}
-          className="w-16 rounded-xl bg-white px-3 py-2.5 text-center ring-1 ring-stone-200 outline-none"
+          className="field w-16 px-2 py-2.5 text-center"
         />
-        <span className="text-stone-400">×</span>
+        <span className="text-faint">×</span>
         <MoneyInput label="New item price" value={0} onChange={setPrice} className="flex-1" />
       </div>
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onCancel} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-stone-600">
+        <button type="button" onClick={onCancel} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-muted hover:text-ink">
           Cancel
         </button>
-        <button type="submit" disabled={!valid || busy} className="rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+        <button type="submit" disabled={!valid || busy} className="rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-40">
           Add
         </button>
       </div>
@@ -305,17 +309,17 @@ function StartRoomSheet({ open, onClose, onStart }: { open: boolean; onClose: ()
         }}
       >
         <label className="block">
-          <span className="mb-1 block text-sm font-semibold">Your name</span>
+          <span className="mb-1.5 block text-sm font-medium">Your name</span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={30}
             placeholder="Arshad"
-            className="w-full rounded-xl bg-white px-3 py-3 ring-1 ring-stone-200 outline-none focus:ring-2 focus:ring-orange-500"
+            className="field"
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-sm font-semibold">Your UPI ID</span>
+          <span className="mb-1.5 block text-sm font-medium">Your UPI ID</span>
           <input
             value={upi}
             onChange={(e) => setUpi(e.target.value)}
@@ -323,9 +327,9 @@ function StartRoomSheet({ open, onClose, onStart }: { open: boolean; onClose: ()
             autoCapitalize="none"
             autoCorrect="off"
             spellCheck={false}
-            className="w-full rounded-xl bg-white px-3 py-3 ring-1 ring-stone-200 outline-none focus:ring-2 focus:ring-orange-500"
+            className="field"
           />
-          <span className={`mt-1 block text-xs ${upi && !upiValid ? "text-red-600" : "text-stone-500"}`}>
+          <span className={`mt-1.5 block text-xs ${upi && !upiValid ? "text-red-600" : "text-muted"}`}>
             {upi && !upiValid ? "That doesn't look like a UPI ID (name@bank)" : "Friends pay you here. Find it in GPay / PhonePe / Paytm → Profile."}
           </span>
         </label>

@@ -8,6 +8,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/Button";
+import { Icon } from "@/components/Icon";
 import { CenteredMessage, PageShell } from "@/components/PageShell";
 import { PayCard } from "@/components/PayCard";
 import { Sheet } from "@/components/Sheet";
@@ -73,7 +74,7 @@ export default function SummaryPage() {
     return (
       <PageShell>
         <div className="flex justify-center pt-24">
-          <Spinner className="h-8 w-8 text-orange-500" />
+          <Spinner className="h-6 w-6 text-faint" />
         </div>
       </PageShell>
     );
@@ -83,7 +84,7 @@ export default function SummaryPage() {
       <PageShell>
         <CenteredMessage emoji="⏳" title="Still claiming">
           The host hasn&apos;t finalized yet.{" "}
-          <Link href={`/room/${code}`} className="font-semibold text-orange-600 underline">
+          <Link href={`/room/${code}`} className="font-semibold text-ink underline decoration-line decoration-2 underline-offset-4">
             Back to the room
           </Link>
         </CenteredMessage>
@@ -124,65 +125,66 @@ export default function SummaryPage() {
 
   return (
     <PageShell>
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="pt-4 text-center">
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="pt-10 text-center">
         <motion.div
           key={payments.settled ? "settled" : "done"}
-          initial={{ scale: 0, rotate: -20 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: "spring", delay: 0.1 }}
-          className="text-6xl"
+          initial={{ scale: 0.5, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 300, damping: 18, delay: 0.1 }}
+          className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full text-white ${payments.settled ? "bg-emerald-600" : "bg-ink"}`}
         >
-          {payments.settled ? "🥳" : "🎉"}
+          <Icon name="check" className="h-6 w-6" strokeWidth={2.25} />
         </motion.div>
-        <h1 className="mt-2 text-3xl font-extrabold">{payments.settled ? "All settled!" : "Split done!"}</h1>
-        <p className="mt-1 text-stone-600">
+        <h1 className="mt-5 text-3xl font-semibold tracking-tight">{payments.settled ? "All settled!" : "Split done!"}</h1>
+        <p className="mt-1.5 text-muted">
           {room.bill.restaurantName ?? "Your bill"} · {formatINR(split.split.grandTotal)}
         </p>
       </motion.div>
 
       {/* Guest: the big Pay button */}
       {myPayment && (myPayment.status === "PENDING" || myPayment.status === "PAID") && (
-        <div className="mt-6">
+        <div className="mt-8">
           <PayCard code={code} payment={myPayment} payee={payments.payee} />
         </div>
       )}
 
       {/* Progress: how much the host has collected */}
       {payments.dueCount > 0 && (
-        <div className="mt-6 rounded-3xl bg-white p-4 ring-1 ring-stone-100">
+        <div className="card mt-4 p-5">
           <div className="flex items-baseline justify-between">
-            <span className="text-sm font-semibold text-stone-600">
+            <span className="eyebrow">
               {isHost ? "Collected" : `${payments.payee.name} has received`}
             </span>
-            <span className="text-sm text-stone-500">
+            <span className="text-xs text-muted tabular-nums">
               {payments.paidCount} of {payments.dueCount} paid
             </span>
           </div>
-          <p className="mt-1 text-2xl font-extrabold tabular-nums">
-            {formatINR(payments.collected)} <span className="text-base font-semibold text-stone-400">of {formatINR(totalDue)}</span>
+          <p className="mt-2 text-2xl font-semibold tracking-tight tabular-nums">
+            {formatINR(payments.collected)} <span className="text-sm font-normal text-faint">of {formatINR(totalDue)}</span>
           </p>
-          <div className="mt-3 h-3 overflow-hidden rounded-full bg-stone-100">
+          <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-wash">
             <motion.div
-              className={`h-full rounded-full ${payments.settled ? "bg-emerald-500" : "bg-orange-500"}`}
+              className={`h-full rounded-full ${payments.settled ? "bg-emerald-600" : "bg-ink"}`}
               initial={false}
               animate={{ width: `${Math.round(progress * 100)}%` }}
               transition={{ type: "spring", stiffness: 120, damping: 20 }}
             />
           </div>
           {isHost && !payments.settled && (
-            <p className="mt-2 text-xs text-stone-500">Check your bank app, then tap &quot;Mark paid&quot; for each person.</p>
+            <p className="mt-3 text-xs text-muted">Check your bank app, then tap &quot;Mark paid&quot; for each person.</p>
           )}
         </div>
       )}
 
       <button
         onClick={shareOnWhatsApp}
-        className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] py-3 font-semibold text-white"
+        className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl border border-line bg-white py-3 text-sm font-medium transition-colors hover:bg-wash"
       >
-        <span aria-hidden>💬</span> Share on WhatsApp
+        <Icon name="chat" className="h-4 w-4 text-[#1faa53]" /> Share on WhatsApp
       </button>
 
-      <ul className="mt-6 space-y-3">
+      <p className="eyebrow mt-10 mb-3">Everyone&apos;s share</p>
+      <ul className="space-y-2.5">
         {people.map((p, i) => (
           <PersonCard
             key={p.participantId}
@@ -200,11 +202,11 @@ export default function SummaryPage() {
       </ul>
 
       {split.split.balanced && (
-        <p className="mt-4 text-center text-xs text-stone-500">✓ Shares add up exactly to {formatINR(split.split.grandTotal)}, to the paisa.</p>
+        <p className="mt-5 text-center text-xs text-faint">✓ Shares add up exactly to {formatINR(split.split.grandTotal)}, to the paisa.</p>
       )}
 
       {isHost && (
-        <div className="mt-6">
+        <div className="mt-8">
           {payments.paidCount === 0 ? (
             <Button
               variant="secondary"
@@ -224,7 +226,7 @@ export default function SummaryPage() {
               ↩︎ Reopen for changes
             </Button>
           ) : (
-            <p className="text-center text-xs text-stone-400">The split can&apos;t be reopened once someone has paid.</p>
+            <p className="text-center text-xs text-faint">The split can&apos;t be reopened once someone has paid.</p>
           )}
         </div>
       )}
@@ -234,9 +236,9 @@ export default function SummaryPage() {
         {qrFor && (
           <div className="flex flex-col items-center text-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={api.payQrUrl(code, qrFor.participantId, qrFor.amount)} alt="UPI payment QR" width={240} height={240} className="h-60 w-60" />
-            <p className="mt-2 text-3xl font-extrabold tabular-nums">{formatINR(qrFor.amount)}</p>
-            <p className="mt-1 text-sm text-stone-500">They scan this with any UPI app. The amount is filled in.</p>
+            <img src={api.payQrUrl(code, qrFor.participantId, qrFor.amount)} alt="UPI payment QR" width={240} height={240} className="h-56 w-56" />
+            <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums">{formatINR(qrFor.amount)}</p>
+            <p className="mt-1.5 text-sm text-muted">They scan this with any UPI app. The amount is filled in.</p>
           </div>
         )}
       </Sheet>
@@ -247,10 +249,10 @@ export default function SummaryPage() {
 function StatusBadge({ payment }: { payment?: PersonPayment }) {
   if (!payment) return null;
   const styles: Record<PersonPayment["status"], [string, string]> = {
-    PAID: ["Paid ✓", "bg-emerald-100 text-emerald-700"],
-    PENDING: ["Pending", "bg-amber-100 text-amber-800"],
-    HOST: ["Paid the bill", "bg-orange-100 text-orange-700"],
-    NOTHING_DUE: ["Nothing to pay", "bg-stone-100 text-stone-500"],
+    PAID: ["Paid ✓", "bg-emerald-50 text-emerald-700"],
+    PENDING: ["Pending", "bg-wash text-muted"],
+    HOST: ["Paid the bill", "bg-accent-soft text-accent"],
+    NOTHING_DUE: ["Nothing to pay", "bg-wash text-faint"],
   };
   const [label, cls] = styles[payment.status];
   return (
@@ -259,7 +261,7 @@ function StatusBadge({ payment }: { payment?: PersonPayment }) {
         key={payment.status}
         initial={{ scale: 0.6, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${cls}`}
+        className={`mt-0.5 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${cls}`}
       >
         {label}
       </motion.span>
@@ -305,23 +307,24 @@ function PersonCard({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.15 + index * 0.06 }}
-      className={`rounded-3xl bg-white p-4 ring-1 ${isMe ? "ring-2 ring-orange-400" : "ring-stone-100"} ${paid ? "bg-emerald-50/40" : ""}`}
+      className={`rounded-2xl border bg-white p-4 ${isMe ? "border-ink shadow-[0_0_0_1px_var(--color-ink)]" : "border-line"}`}
     >
       <button className="flex w-full items-center gap-3 text-left" onClick={() => setOpen(!open)}>
         {participant && <Avatar person={participant} />}
         <span className="min-w-0 flex-1">
-          <span className="block truncate font-semibold">
-            {person.name} {isMe && <span className="text-stone-400">(you)</span>}
+          <span className="block truncate font-medium">
+            {person.name} {isMe && <span className="text-faint">(you)</span>}
           </span>
           <StatusBadge payment={payment} />
         </span>
-        <span className={`text-xl font-extrabold tabular-nums ${paid ? "text-emerald-700" : ""}`}>{formatINR(person.total)}</span>
+        <span className={`text-lg font-semibold tracking-tight tabular-nums ${paid ? "text-emerald-700" : ""}`}>{formatINR(person.total)}</span>
       </button>
 
       {canMark && (
         <div className="mt-3 flex gap-2">
           {!paid && (
-            <button onClick={onShowQr} className="rounded-xl bg-stone-100 px-3 py-2 text-sm font-semibold text-stone-700">
+            <button onClick={onShowQr} className="flex items-center gap-1.5 rounded-xl border border-line px-3 py-2 text-sm font-medium hover:bg-wash">
+              <Icon name="qr" className="h-4 w-4 text-muted" />
               Show pay QR
             </button>
           )}
@@ -329,8 +332,8 @@ function PersonCard({
             whileTap={{ scale: 0.96 }}
             disabled={busy}
             onClick={() => onSetPaid(!paid)}
-            className={`flex-1 rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-60 ${
-              paid ? "bg-white text-stone-500 ring-1 ring-stone-200" : "bg-emerald-600 text-white"
+            className={`flex-1 rounded-xl px-3 py-2 text-sm font-semibold transition-colors disabled:opacity-60 ${
+              paid ? "border border-line bg-white text-muted hover:text-ink" : "bg-ink text-white hover:bg-ink/90"
             }`}
           >
             {busy ? "Saving…" : paid ? "Undo paid" : "Mark paid"}
@@ -339,20 +342,20 @@ function PersonCard({
       )}
 
       {open && (
-        <div className="mt-3 border-t border-dashed border-stone-200 pt-3 text-sm">
+        <div className="mt-4 border-t border-dashed border-line pt-3 text-sm">
           <ul className="space-y-1">
             {person.items.map((it) => (
-              <li key={it.itemId} className="flex justify-between text-stone-700">
+              <li key={it.itemId} className="flex justify-between text-ink/80">
                 <span>
                   {it.name}
-                  {it.sharedWith > 1 && <span className="text-stone-400"> ÷{it.sharedWith}</span>}
+                  {it.sharedWith > 1 && <span className="text-faint"> ÷{it.sharedWith}</span>}
                 </span>
                 <span className="tabular-nums">{formatINR(it.share)}</span>
               </li>
             ))}
-            {person.items.length === 0 && <li className="text-stone-400">No items claimed</li>}
+            {person.items.length === 0 && <li className="text-faint">No items claimed</li>}
           </ul>
-          <ul className="mt-2 space-y-1 border-t border-stone-100 pt-2 text-stone-500">
+          <ul className="mt-2.5 space-y-1 border-t border-line pt-2.5 text-muted">
             {lines
               .filter(([, v]) => v !== 0)
               .map(([label, v]) => (

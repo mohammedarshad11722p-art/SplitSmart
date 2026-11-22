@@ -10,6 +10,7 @@ import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/Button";
 import { ClaimItemCard } from "@/components/ClaimItemCard";
 import { FinalizeSheet } from "@/components/FinalizeSheet";
+import { Icon } from "@/components/Icon";
 import { JoinForm } from "@/components/JoinForm";
 import { CenteredMessage, PageShell } from "@/components/PageShell";
 import { ShareRoomCard } from "@/components/ShareRoomCard";
@@ -101,7 +102,7 @@ export default function RoomPage() {
       <PageShell>
         <CenteredMessage emoji="🤔" title="Room not found">
           {loadError}{" "}
-          <Link href="/join" className="font-semibold text-orange-600 underline">
+          <Link href="/join" className="font-semibold text-ink underline decoration-line decoration-2 underline-offset-4">
             Try another code
           </Link>
         </CenteredMessage>
@@ -112,7 +113,7 @@ export default function RoomPage() {
     return (
       <PageShell>
         <div className="flex justify-center pt-24">
-          <Spinner className="h-8 w-8 text-orange-500" />
+          <Spinner className="h-6 w-6 text-faint" />
         </div>
       </PageShell>
     );
@@ -133,7 +134,7 @@ export default function RoomPage() {
       return (
         <PageShell>
           <CenteredMessage emoji="🔒" title="This split is already finalized">
-            <Link href={`/room/${code}/summary`} className="font-semibold text-orange-600 underline">
+            <Link href={`/room/${code}/summary`} className="font-semibold text-ink underline decoration-line decoration-2 underline-offset-4">
               See who owes what
             </Link>
           </CenteredMessage>
@@ -174,16 +175,16 @@ export default function RoomPage() {
       bottomBar={
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
-            <div className="text-xs text-stone-500">Your share so far</div>
-            <motion.div key={myShare} initial={{ scale: 1.08 }} animate={{ scale: 1 }} className="origin-left text-2xl font-extrabold tabular-nums">
+            <div className="eyebrow">Your share so far</div>
+            <motion.div key={myShare} initial={{ scale: 1.08 }} animate={{ scale: 1 }} className="mt-0.5 origin-left text-2xl font-semibold tracking-tight tabular-nums">
               {formatINR(myShare)}
             </motion.div>
-            <div className="text-xs text-stone-500">incl. tax &amp; charges</div>
+            <div className="text-xs text-faint">incl. tax &amp; charges</div>
           </div>
           {isHost ? (
             <Button onClick={() => setFinalizeOpen(true)}>Finalize</Button>
           ) : (
-            <span className="rounded-full bg-stone-100 px-3 py-2 text-xs font-semibold text-stone-600">
+            <span className="rounded-full border border-line bg-white px-3 py-2 text-xs font-medium text-muted">
               {unclaimedCount === 0 ? "All items claimed 🎉" : `${unclaimedCount} unclaimed`}
             </span>
           )}
@@ -191,11 +192,11 @@ export default function RoomPage() {
       }
     >
       {/* Header */}
-      <div className="flex items-start justify-between gap-3 pt-2">
+      <div className="flex items-start justify-between gap-3 pt-6">
         <div className="min-w-0">
-          <h1 className="truncate text-2xl font-extrabold">{room.bill.restaurantName ?? "Bill split"}</h1>
-          <p className="text-sm text-stone-500">
-            Room <span className="font-mono font-semibold text-stone-700">{code}</span> · {formatINR(room.bill.grandTotal)} total
+          <h1 className="truncate text-[28px] font-semibold tracking-tight">{room.bill.restaurantName ?? "Bill split"}</h1>
+          <p className="mt-0.5 text-sm text-muted">
+            Room <span className="font-mono font-medium text-ink">{code}</span> · {formatINR(room.bill.grandTotal)} total
           </p>
         </div>
         <AnimatePresence>
@@ -204,7 +205,7 @@ export default function RoomPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="shrink-0 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800"
+              className="mt-2 flex shrink-0 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800"
             >
               {status === "connecting" ? "Connecting…" : "Reconnecting…"}
             </motion.span>
@@ -213,7 +214,7 @@ export default function RoomPage() {
       </div>
 
       {/* People */}
-      <button onClick={() => setPeopleOpen(true)} className="mt-4 flex w-full items-center gap-3 rounded-2xl bg-white px-4 py-3 ring-1 ring-stone-100">
+      <button onClick={() => setPeopleOpen(true)} className="card mt-5 flex w-full items-center gap-3 px-4 py-3 transition-colors hover:border-faint">
         <div className="flex -space-x-2">
           {people.slice(0, 6).map((p) => (
             <motion.span key={p.id} initial={{ scale: 0 }} animate={{ scale: 1 }}>
@@ -221,21 +222,26 @@ export default function RoomPage() {
             </motion.span>
           ))}
         </div>
-        <span className="text-sm text-stone-600">
+        <span className="flex-1 text-left text-sm text-muted">
           {people.length} {people.length === 1 ? "person" : "people"}
           {isHost && people.length === 1 && " · invite friends"}
         </span>
+        <Icon name="users" className="h-4 w-4 text-faint" />
       </button>
 
       {isHost && (
-        <div className="mt-3">
-          <button onClick={() => setShowQr((s) => !s)} className="w-full rounded-2xl bg-stone-900 px-4 py-3 text-sm font-semibold text-white">
-            {showQr ? "Hide QR code" : "📱 Show QR code to invite friends"}
+        <div className="mt-2.5">
+          <button
+            onClick={() => setShowQr((s) => !s)}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-line bg-white px-4 py-3 text-sm font-medium transition-colors hover:bg-wash"
+          >
+            <Icon name="qr" className="h-4 w-4 text-muted" />
+            {showQr ? "Hide QR code" : "Show QR code to invite friends"}
           </button>
           <AnimatePresence>
             {showQr && (
               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                <div className="pt-3">
+                <div className="pt-2.5">
                   <ShareRoomCard code={code} joinUrl={room.room.joinUrl} restaurant={room.bill.restaurantName} />
                 </div>
               </motion.div>
@@ -246,17 +252,17 @@ export default function RoomPage() {
 
       {/* Host: claim on behalf of someone without a phone */}
       {isHost && people.length > 1 && (
-        <div className="mt-5">
-          <p className="mb-2 text-sm font-semibold text-stone-600">Tapping for</p>
-          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+        <div className="mt-7">
+          <p className="eyebrow mb-2.5">Tapping for</p>
+          <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1">
             {people.map((p) => {
               const active = p.id === target;
               return (
                 <button
                   key={p.id}
                   onClick={() => setClaimFor(p.id === meId ? null : p.id)}
-                  className={`flex shrink-0 items-center gap-2 rounded-full py-1 pr-3 pl-1 text-sm font-semibold transition-colors ${
-                    active ? "bg-orange-500 text-white" : "bg-white text-stone-700 ring-1 ring-stone-200"
+                  className={`flex shrink-0 items-center gap-2 rounded-full border py-1 pr-3.5 pl-1 text-sm font-medium transition-colors ${
+                    active ? "border-ink bg-ink text-white" : "border-line bg-white text-ink/80 hover:border-faint"
                   }`}
                 >
                   <Avatar person={p} size="sm" />
@@ -269,7 +275,7 @@ export default function RoomPage() {
       )}
 
       {/* Items */}
-      <h2 className="mt-6 mb-2 text-sm font-bold tracking-wide text-stone-500 uppercase">
+      <h2 className="eyebrow mt-8 mb-3">
         {targetPerson && target !== meId ? `Tap what ${targetPerson.name} had` : "Tap what you had"}
       </h2>
       <ul className="space-y-2">
@@ -288,19 +294,19 @@ export default function RoomPage() {
           );
         })}
       </ul>
-      <p className="mt-4 text-center text-xs text-stone-500">Shared a dish? Everyone who had it taps it, and it&apos;s split equally.</p>
+      <p className="mt-5 text-center text-xs text-faint">Shared a dish? Everyone who had it taps it, and it&apos;s split equally.</p>
 
       {/* People sheet */}
       <Sheet open={peopleOpen} onClose={() => setPeopleOpen(false)} title="People">
         <ul className="space-y-2">
           {people.map((p) => (
-            <li key={p.id} className="flex items-center gap-3 rounded-2xl bg-stone-50 px-3 py-2">
+            <li key={p.id} className="flex items-center gap-3 rounded-xl border border-line px-3 py-2.5">
               <Avatar person={p} online={online.includes(p.id)} />
               <span className="flex-1 font-medium">
-                {p.name} {p.id === meId && <span className="text-stone-400">(you)</span>}
-                {p.isHost && <span className="ml-1 rounded-full bg-orange-100 px-2 py-0.5 text-xs text-orange-700">host</span>}
+                {p.name} {p.id === meId && <span className="text-faint">(you)</span>}
+                {p.isHost && <span className="ml-1.5 rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">host</span>}
               </span>
-              <span className="text-sm tabular-nums text-stone-600">
+              <span className="text-sm tabular-nums text-muted">
                 {formatINR(split?.split.people.find((s) => s.participantId === p.id)?.total ?? 0)}
               </span>
               {isHost && !p.isHost && (

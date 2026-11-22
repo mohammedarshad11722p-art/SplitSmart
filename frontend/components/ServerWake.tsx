@@ -50,13 +50,13 @@ export function ServerWake() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -60, opacity: 0 }}
           role="status"
-          className={`fixed inset-x-3 top-3 z-50 mx-auto max-w-md rounded-2xl px-4 py-3 text-sm shadow-lg ${
-            state === "down" ? "bg-red-600 text-white" : "bg-stone-900 text-white"
+          className={`fixed inset-x-3 top-3 z-50 mx-auto max-w-md rounded-2xl px-4 py-3 text-sm shadow-[0_8px_30px_rgba(0,0,0,0.12)] ${
+            state === "down" ? "bg-red-600 text-white" : "bg-ink text-white"
           }`}
         >
           {state === "slow" ? (
             <span className="flex items-center gap-2">
-              <span className="inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-orange-400" />
+              <span className="inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-accent" />
               Waking up the server… free hosting naps when nobody&apos;s using it. Give it up to a minute.
             </span>
           ) : (

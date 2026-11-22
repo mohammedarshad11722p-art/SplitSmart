@@ -9,6 +9,7 @@ import { api } from "@/lib/api";
 import { isPhone } from "@/lib/device";
 import { formatINR } from "@/lib/format";
 import type { PaymentsView, PersonPayment } from "@/lib/types";
+import { Icon } from "./Icon";
 import { useToast } from "./Toast";
 
 export function PayCard({ code, payment, payee }: { code: string; payment: PersonPayment; payee: PaymentsView["payee"] }) {
@@ -26,15 +27,19 @@ export function PayCard({ code, payment, payee }: { code: string; payment: Perso
   if (payment.status === "PAID") {
     return (
       <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
+        initial={{ scale: 0.96, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="rounded-3xl bg-emerald-50 p-5 text-center ring-1 ring-emerald-200"
+        className="card flex items-center gap-4 p-5"
       >
-        <div className="text-4xl">✅</div>
-        <p className="mt-1 text-lg font-bold text-emerald-800">You&apos;re all paid up</p>
-        <p className="text-sm text-emerald-700">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
+          <Icon name="check" className="h-5 w-5" strokeWidth={2.25} />
+        </span>
+        <div>
+        <p className="font-semibold">You&apos;re all paid up</p>
+        <p className="text-sm text-muted">
           {payee.name} confirmed {formatINR(payment.amount)}. Thanks!
         </p>
+        </div>
       </motion.div>
     );
   }
@@ -50,16 +55,16 @@ export function PayCard({ code, payment, payee }: { code: string; payment: Perso
   }
 
   return (
-    <div className="rounded-3xl bg-stone-900 p-5 text-white">
-      <p className="text-sm text-stone-300">You owe {payee.name}</p>
-      <p className="text-4xl font-extrabold tabular-nums">{formatINR(payment.amount)}</p>
+    <div className="card p-5">
+      <p className="eyebrow">You owe {payee.name}</p>
+      <p className="mt-1.5 text-[40px] leading-none font-semibold tracking-tight tabular-nums">{formatINR(payment.amount)}</p>
 
       {phone && (
         <motion.a
           whileTap={{ scale: 0.97 }}
           href={payment.upiLink}
           onClick={() => setTapped(true)}
-          className="mt-4 flex min-h-14 items-center justify-center rounded-2xl bg-orange-500 text-lg font-bold shadow-lg shadow-orange-500/30"
+          className="mt-5 flex min-h-13 items-center justify-center gap-2 rounded-xl bg-ink py-3.5 text-[15px] font-semibold text-white"
         >
           Pay {formatINR(payment.amount)} with UPI
         </motion.a>
@@ -67,7 +72,7 @@ export function PayCard({ code, payment, payee }: { code: string; payment: Perso
 
       <AnimatePresence>
         {tapped && (
-          <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mt-3 text-center text-sm text-stone-300">
+          <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mt-3 text-center text-sm leading-relaxed text-muted">
             Paid? {payee.name} will tick you off once it shows in their bank app.
             <br />
             App didn&apos;t open? Use the QR or copy the UPI ID below.
@@ -76,10 +81,12 @@ export function PayCard({ code, payment, payee }: { code: string; payment: Perso
       </AnimatePresence>
 
       <div className="mt-3 flex gap-2">
-        <button onClick={() => setShowQr((s) => !s)} className="flex-1 rounded-xl bg-white/10 py-2.5 text-sm font-semibold">
+        <button onClick={() => setShowQr((s) => !s)} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-line py-2.5 text-sm font-medium hover:bg-wash">
+          <Icon name="qr" className="h-4 w-4 text-muted" />
           {showQr ? "Hide QR" : "Show QR"}
         </button>
-        <button onClick={copyUpi} className="flex-1 rounded-xl bg-white/10 py-2.5 text-sm font-semibold">
+        <button onClick={copyUpi} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-line py-2.5 text-sm font-medium hover:bg-wash">
+          <Icon name="copy" className="h-4 w-4 text-muted" />
           Copy UPI ID
         </button>
       </div>
@@ -87,23 +94,23 @@ export function PayCard({ code, payment, payee }: { code: string; payment: Perso
       <AnimatePresence>
         {showQr && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-            <div className="mt-4 flex flex-col items-center rounded-2xl bg-white p-4 text-stone-900">
+            <div className="mt-4 flex flex-col items-center rounded-xl bg-wash/60 p-5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={api.payQrUrl(code, payment.participantId, payment.amount)}
                 alt={`UPI QR to pay ${payee.name} ${formatINR(payment.amount)}`}
                 width={208}
                 height={208}
-                className="h-52 w-52"
+                className="h-48 w-48 rounded-lg bg-white p-2 mix-blend-multiply"
               />
-              <p className="mt-2 text-center text-sm text-stone-600">
+              <p className="mt-3 text-center text-sm text-muted">
                 {phone ? "Scan from another phone with any UPI app" : "Scan with GPay, PhonePe, Paytm or any UPI app"}
               </p>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-      <p className="mt-3 text-center text-xs break-all text-stone-400">UPI ID: {payee.upiId}</p>
+      <p className="mt-4 text-center font-mono text-xs break-all text-faint">{payee.upiId}</p>
     </div>
   );
 }

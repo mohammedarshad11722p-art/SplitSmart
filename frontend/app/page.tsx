@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/Button";
+import { Icon } from "@/components/Icon";
 import { PageShell } from "@/components/PageShell";
 import { Spinner } from "@/components/Spinner";
 import { useToast } from "@/components/Toast";
@@ -62,18 +63,28 @@ export default function HomePage() {
 
   return (
     <PageShell>
-      <section className="pt-8 pb-8">
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-2 text-5xl">
-          🧾✨
-        </motion.div>
-        <h1 className="text-4xl leading-tight font-extrabold tracking-tight">
+      <section className="pt-10 pb-10">
+        <motion.span
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-muted"
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+          Bill splitting, minus the maths
+        </motion.span>
+        <motion.h1
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="mt-5 text-[40px] leading-[1.05] font-semibold tracking-tight"
+        >
           Snap the bill.
           <br />
           Tap what you ate.
           <br />
-          <span className="text-orange-500">Done.</span>
-        </h1>
-        <p className="mt-4 text-lg text-stone-600">
+          <span className="text-accent">Done.</span>
+        </motion.h1>
+        <p className="mt-5 text-[17px] leading-relaxed text-muted">
           AI reads the bill, friends join with a QR code, and everyone gets their exact share with a UPI link.
         </p>
       </section>
@@ -82,64 +93,70 @@ export default function HomePage() {
         {busy ? (
           <motion.div
             key="busy"
-            initial={{ opacity: 0, scale: 0.97 }}
-            animate={{ opacity: 1, scale: 1 }}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="flex flex-col items-center gap-4 rounded-3xl bg-white p-8 text-center shadow-sm ring-1 ring-stone-100"
+            className="card flex flex-col items-center gap-3 p-8 text-center"
           >
-            <Spinner className="h-10 w-10 text-orange-500" />
+            <Spinner className="h-7 w-7 text-accent" />
             <AnimatePresence mode="wait">
               <motion.p
                 key={messageIndex}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
-                className="text-lg font-semibold"
+                className="mt-1 font-semibold"
               >
                 {READING_MESSAGES[messageIndex]}
               </motion.p>
             </AnimatePresence>
-            <p className="text-sm text-stone-500">This usually takes 5-10 seconds</p>
+            <p className="text-sm text-muted">This usually takes 5-10 seconds</p>
           </motion.div>
         ) : (
-          <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
+          <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-2.5">
             {/* capture="environment" opens the back camera directly on phones */}
             <input ref={cameraInput} type="file" accept="image/*" capture="environment" hidden onChange={(e) => handleFile(e.target.files?.[0])} />
             <input ref={galleryInput} type="file" accept="image/*" hidden onChange={(e) => handleFile(e.target.files?.[0])} />
 
-            <Button full onClick={() => cameraInput.current?.click()} className="min-h-16 text-lg">
-              📸 Snap the bill
+            <Button full onClick={() => cameraInput.current?.click()} className="min-h-14">
+              <Icon name="camera" />
+              Snap the bill
             </Button>
             <Button full variant="secondary" onClick={() => galleryInput.current?.click()}>
-              🖼️ Choose a photo
+              <Icon name="image" className="h-5 w-5 text-muted" />
+              Choose a photo
             </Button>
             <Button full variant="ghost" loading={manualBusy} onClick={startManual}>
-              ✍️ Type the items instead
+              {!manualBusy && <Icon name="pencil" className="h-4 w-4" />}
+              Type the items instead
             </Button>
 
-            <div className="pt-6 text-center">
-              <span className="text-stone-500">Friend already started one? </span>
-              <Link href="/join" className="font-semibold text-orange-600 underline underline-offset-4">
+            <p className="pt-5 text-center text-sm text-muted">
+              Friend already started one?{" "}
+              <Link href="/join" className="font-semibold text-ink underline decoration-line decoration-2 underline-offset-4 hover:decoration-accent">
                 Join with a code
               </Link>
-            </div>
+            </p>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <ol className="mt-12 grid gap-3 text-sm text-stone-600">
-        {[
-          ["📸", "Host snaps the bill, AI lists every item"],
-          ["📱", "Friends scan the QR, no app or signup"],
-          ["👆", "Everyone taps what they ate, live"],
-          ["💸", "Exact shares with tax, paid by UPI"],
-        ].map(([icon, text]) => (
-          <li key={text} className="flex items-center gap-3 rounded-2xl bg-white/70 px-4 py-3 ring-1 ring-stone-100">
-            <span className="text-xl">{icon}</span>
-            {text}
-          </li>
-        ))}
-      </ol>
+      <section className="mt-14">
+        <p className="eyebrow mb-3">How it works</p>
+        <ol className="card divide-y divide-line">
+          {[
+            "Host snaps the bill, AI lists every item",
+            "Friends scan the QR, no app or signup",
+            "Everyone taps what they ate, live",
+            "Exact shares with tax, paid by UPI",
+          ].map((text, i) => (
+            <li key={text} className="flex items-center gap-4 px-4 py-3.5 text-sm">
+              <span className="w-5 font-mono text-xs text-faint tabular-nums">{String(i + 1).padStart(2, "0")}</span>
+              <span className="text-ink/80">{text}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
     </PageShell>
   );
 }

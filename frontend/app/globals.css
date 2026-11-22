@@ -1,9 +1,35 @@
 /* Location: frontend/app/globals.css */
 @import "tailwindcss";
 
-/* Tailwind v4: theme tweaks live here instead of tailwind.config.ts */
+/*
+ * SplitSmart design tokens (Tailwind v4 reads these and makes classes:
+ * bg-paper, text-ink, border-line, text-muted, bg-accent, ...).
+ * The look: warm off-white paper, near-black ink for text and primary
+ * buttons, hairline borders instead of shadows, and ONE accent colour
+ * (orange) used sparingly for the brand and the selected/active state.
+ */
 @theme {
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --color-paper: #f7f6f3; /* page background */
+  --color-ink: #1c1b19; /* text + primary buttons */
+  --color-muted: #78736d; /* secondary text */
+  --color-faint: #a9a49d; /* hints, placeholders */
+  --color-line: #e8e5e0; /* hairline borders */
+  --color-wash: #f1efeb; /* subtle fills (chips, inactive tracks) */
+  --color-accent: #ea580c; /* the one brand colour */
+  --color-accent-soft: #fff1e8;
+}
+
+/* Reusable building blocks, so every card / input looks identical. */
+@utility card {
+  @apply rounded-2xl border border-line bg-white;
+}
+@utility field {
+  @apply w-full rounded-xl border border-line bg-white px-3.5 py-3 text-ink outline-none transition placeholder:text-faint focus:border-ink focus:ring-4 focus:ring-ink/5;
+}
+@utility eyebrow {
+  @apply text-[11px] font-semibold tracking-[0.14em] text-muted uppercase;
 }
 
 :root {
@@ -11,9 +37,14 @@
 }
 
 body {
-  background: #fffaf5;
-  color: #1c1917;
+  background: var(--color-paper);
+  color: var(--color-ink);
   -webkit-tap-highlight-color: transparent; /* no grey flash when tapping on phones */
+  font-feature-settings: "cv11", "ss01";
+}
+
+::selection {
+  background: var(--color-accent-soft);
 }
 
 /* Hide the number spinners on amount inputs */

@@ -22,8 +22,8 @@ export function MoneyInput({
   useEffect(() => setText(paiseToInput(value)), [value]);
 
   return (
-    <label className={`flex items-center rounded-xl bg-white px-3 ring-1 ring-stone-200 focus-within:ring-2 focus-within:ring-orange-500 ${className}`}>
-      <span className="text-stone-400">₹</span>
+    <label className={`flex items-center rounded-xl border border-line bg-white px-3 transition focus-within:border-ink focus-within:ring-4 focus-within:ring-ink/5 ${className}`}>
+      <span className="text-faint">₹</span>
       <input
         aria-label={label}
         inputMode="decimal"

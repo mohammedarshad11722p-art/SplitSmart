@@ -1,50 +1,47 @@
 // Location: backend/src/socket.ts
-// Creates the Socket.io server. Real-time claiming handlers arrive in step 5.
-import type { Application } from "express";
+// Creates the Socket.io server and wires up authentication + handlers.
 import type { Server as HttpServer } from "node:http";
 import { Server } from "socket.io";
 import { env } from "./config/env";
+import { socketAuth } from "./realtime/auth";
+import { broadcastPresence, roomChannel } from "./realtime/broadcast";
+import { registerClaimHandlers } from "./realtime/claimHandlers";
+import type { AppServer } from "./realtime/io";
+import { getRoomState } from "./services/room.service";
 
-export function createSocketServer(httpServer: HttpServer) {
-  const io = new Server(httpServer, {
+export function createSocketServer(httpServer: HttpServer): AppServer {
+  const io: AppServer = new Server(httpServer, {
     cors: { origin: env.corsOrigins, credentials: true },
     // Phones switch between Wi-Fi and 4G. Recovery replays missed events to a
     // client that drops for under 2 minutes, instead of losing claims.
     connectionStateRecovery: { maxDisconnectionDuration: 2 * 60 * 1000 },
   });
 
-  io.on("connection", (socket) => {
-    console.log(`🔌 socket connected ${socket.id}`);
-    socket.emit("server:hello", { message: "Connected to SplitSmart" });
+  // 1. Who are you? Runs before "connection". Bad token = connection refused.
+  io.use(socketAuth);
+
+  // 2. You're in.
+  io.on("connection", async (socket) => {
+    const { roomCode, name } = socket.data;
+    console.log(`🔌 ${name} connected to ${roomCode} (${socket.id})`);
+
+    await socket.join(roomChannel(roomCode));
+    registerClaimHandlers(io, socket);
+
+    // Send a fresh full snapshot on EVERY connect, including reconnects.
+    // Whatever the phone missed while offline, it's now in sync.
+    try {
+      socket.emit("room:state", await getRoomState(roomCode));
+    } catch (err) {
+      console.error("failed to send room state:", err);
+    }
+    void broadcastPresence(io, roomCode);
 
     socket.on("disconnect", (reason) => {
-      console.log(`🔌 socket disconnected ${socket.id} (${reason})`);
+      console.log(`🔌 ${name} left ${roomCode} (${reason})`);
+      void broadcastPresence(io, roomCode);
     });
   });
 
   return io;
-}
-
-/**
- * Every SplitSmart room maps to one Socket.io "room" (a broadcast channel).
- * Emitting to room:K7P2QX reaches every phone looking at that split.
- */
-export function roomChannel(code: string) {
-  return `room:${code}`;
-}
-
-/** Event names, in one place so backend and frontend can't drift apart. */
-export const ServerEvents = {
-  participantJoined: "participant:joined",
-  participantRemoved: "participant:removed",
-  roomUpdated: "room:updated",
-} as const;
-
-/**
- * Lets REST routes broadcast. index.ts stores `io` on the Express app; in
- * tests there's no io, so this quietly does nothing.
- */
-export function emitToRoom(app: Application, code: string, event: string, payload: unknown) {
-  const io = app.get("io") as Server | undefined;
-  io?.to(roomChannel(code)).emit(event, payload);
 }

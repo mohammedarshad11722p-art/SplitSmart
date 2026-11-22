@@ -14,6 +14,7 @@ import { z } from "zod";
 import { AppError, asyncHandler } from "../middleware/errorHandler";
 import { requireHost } from "../middleware/hostAuth";
 import { uploadBillImage } from "../middleware/upload";
+import { notifyBillChanged } from "../realtime/broadcast";
 import * as billService from "../services/bill.service";
 
 export const billsRouter = Router();
@@ -85,7 +86,9 @@ billsRouter.patch(
   requireHost,
   asyncHandler(async (req, res) => {
     const patch = billUpdateSchema.parse(req.body);
-    res.json({ bill: await billService.updateBillTotals(req.params.billId!, patch) });
+    const bill = await billService.updateBillTotals(req.params.billId!, patch);
+    await notifyBillChanged(req.app, bill.id); // phones in the room see the change live
+    res.json({ bill });
   }),
 );
 
@@ -94,7 +97,9 @@ billsRouter.post(
   requireHost,
   asyncHandler(async (req, res) => {
     const input = itemCreateSchema.parse(req.body);
-    res.status(201).json({ bill: await billService.addItem(req.params.billId!, input) });
+    const bill = await billService.addItem(req.params.billId!, input);
+    await notifyBillChanged(req.app, bill.id);
+    res.status(201).json({ bill });
   }),
 );
 
@@ -103,7 +108,9 @@ billsRouter.patch(
   requireHost,
   asyncHandler(async (req, res) => {
     const patch = itemUpdateSchema.parse(req.body);
-    res.json({ bill: await billService.updateItem(req.params.billId!, req.params.itemId!, patch) });
+    const bill = await billService.updateItem(req.params.billId!, req.params.itemId!, patch);
+    await notifyBillChanged(req.app, bill.id);
+    res.json({ bill });
   }),
 );
 
@@ -111,6 +118,8 @@ billsRouter.delete(
   "/:billId/items/:itemId",
   requireHost,
   asyncHandler(async (req, res) => {
-    res.json({ bill: await billService.deleteItem(req.params.billId!, req.params.itemId!) });
+    const bill = await billService.deleteItem(req.params.billId!, req.params.itemId!);
+    await notifyBillChanged(req.app, bill.id);
+    res.json({ bill });
   }),
 );

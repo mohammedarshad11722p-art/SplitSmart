@@ -14,7 +14,8 @@
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "simulate": "tsx scripts/simulate-room.ts"
   },
   "engines": {
     "node": ">=20"
@@ -43,6 +44,7 @@
     "@types/supertest": "6.0.2",
     "jest": "29.7.0",
     "prisma": "6.16.2",
+    "socket.io-client": "4.8.1",
     "supertest": "7.0.0",
     "ts-jest": "29.2.5",
     "tsx": "4.19.2",

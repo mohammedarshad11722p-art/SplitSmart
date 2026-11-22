@@ -10,6 +10,8 @@
 // GET    /api/rooms/:code/split                      live split preview / final amounts (anyone with the code)
 // POST   /api/rooms/:code/finalize                   lock the split, save amounts (host)
 // POST   /api/rooms/:code/reopen                     unlock to fix mistakes      (host)
+// PATCH  /api/rooms/:code/participants/:participantId/payment  mark paid / unpaid (host)
+// GET    /api/rooms/:code/participants/:participantId/pay-qr   UPI payment QR PNG (anyone with the code)
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import QRCode from "qrcode";
@@ -62,6 +64,7 @@ const personName = z
 const createSchema = z.object({ billId: z.string().min(1), hostName: personName, hostUpiId: upiIdSchema });
 const joinSchema = z.object({ name: personName, sessionToken: z.string().min(20).max(200).optional() });
 const finalizeSchema = z.object({ force: z.boolean().optional().default(false) });
+const paymentSchema = z.object({ paid: z.boolean() });
 const updateSchema = z
   .object({ hostName: personName, hostUpiId: upiIdSchema })
   .partial()
@@ -177,5 +180,27 @@ roomsRouter.post(
     emitToRoom(req.app, code, "room:reopened");
     await broadcastRoomState(getIo(req.app), code);
     res.json(await settleService.getSplitView(code));
+  }),
+);
+
+roomsRouter.patch(
+  "/:code/participants/:participantId/payment",
+  requireRoomHost,
+  asyncHandler(async (req, res) => {
+    const { paid } = paymentSchema.parse(req.body);
+    const code = req.params.code!;
+    const { view, payment } = await settleService.setPaid(code, req.params.participantId!, paid);
+    emitToRoom(req.app, code, "payment:updated", { payment, payments: view.payments!, status: view.status });
+    res.json(view);
+  }),
+);
+
+roomsRouter.get(
+  "/:code/participants/:participantId/pay-qr",
+  asyncHandler(async (req, res) => {
+    const link = await settleService.getUpiLink(req.params.code!, req.params.participantId!);
+    const png = await QRCode.toBuffer(link, { width: 512, margin: 2, errorCorrectionLevel: "M" });
+    // no-store: the amount changes if the host reopens and people re-claim.
+    res.type("png").set("Cache-Control", "no-store").send(png);
   }),
 );

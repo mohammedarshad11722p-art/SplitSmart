@@ -4,6 +4,7 @@
 import { prisma } from "../lib/prisma";
 import { AppError } from "../middleware/errorHandler";
 import { roomLock } from "./roomLock";
+import { buildUpiLink, paymentNote } from "../utils/upi";
 import { calculateSplit, type SplitResult } from "./split";
 
 export interface SplitWarnings {
@@ -13,11 +14,33 @@ export interface SplitWarnings {
   itemsMismatch: { itemsTotal: number; subtotal: number; difference: number } | null;
 }
 
+export interface PersonPayment {
+  participantId: string;
+  /** HOST = paid the restaurant, owes nobody. NOTHING_DUE = their share is ₹0. */
+  status: "PENDING" | "PAID" | "HOST" | "NOTHING_DUE";
+  amount: number; // paise
+  paidAt: Date | null;
+  /** upi://pay?... with the host as payee. Null when there's nothing to pay. */
+  upiLink: string | null;
+}
+
+export interface PaymentsView {
+  payee: { name: string; upiId: string };
+  people: PersonPayment[];
+  dueCount: number; // people who owe the host something
+  paidCount: number;
+  collected: number; // paise received by the host so far
+  outstanding: number; // paise still to come
+  settled: boolean; // everyone who owes something has paid
+}
+
 export interface SplitView {
   status: "OPEN" | "FINALIZED" | "CLOSED";
   final: boolean; // true = amounts are locked and saved
   split: SplitResult;
   warnings: SplitWarnings;
+  /** Only after finalize: who has paid, and each person's UPI link. */
+  payments: PaymentsView | null;
 }
 
 async function loadRoom(code: string) {
@@ -57,6 +80,44 @@ function computeView(room: LoadedRoom): SplitView {
       unclaimedItems: split.unclaimedItems,
       itemsMismatch: difference === 0 ? null : { itemsTotal: split.itemsTotal, subtotal: bill.subtotal, difference },
     },
+    payments: null,
+  };
+}
+
+/**
+ * Payment status for everyone, plus a UPI link per person that pays the host.
+ * Uses the locked totals in `split` (what each person owes).
+ */
+function buildPayments(room: LoadedRoom, split: SplitResult): PaymentsView {
+  const note = paymentNote(room.bill.restaurantName);
+  const people: PersonPayment[] = split.people.map((person) => {
+    const p = room.participants.find((x) => x.id === person.participantId);
+    const amount = person.total;
+    let status: PersonPayment["status"];
+    if (p?.isHost) status = "HOST";
+    else if (amount <= 0) status = "NOTHING_DUE";
+    else status = p?.paymentStatus === "PAID" ? "PAID" : "PENDING";
+    const owes = status === "PENDING" || status === "PAID";
+    return {
+      participantId: person.participantId,
+      status,
+      amount,
+      paidAt: status === "PAID" ? (p?.paidAt ?? null) : null,
+      upiLink: owes ? buildUpiLink({ payeeUpiId: room.hostUpiId, payeeName: room.hostName, amountPaise: amount, note }) : null,
+    };
+  });
+  const due = people.filter((p) => p.status === "PENDING" || p.status === "PAID");
+  const paid = due.filter((p) => p.status === "PAID");
+  const collected = paid.reduce((sum, p) => sum + p.amount, 0);
+  const totalDue = due.reduce((sum, p) => sum + p.amount, 0);
+  return {
+    payee: { name: room.hostName, upiId: room.hostUpiId },
+    people,
+    dueCount: due.length,
+    paidCount: paid.length,
+    collected,
+    outstanding: totalDue - collected,
+    settled: paid.length === due.length,
   };
 }
 
@@ -79,6 +140,7 @@ export async function getSplitView(code: string): Promise<SplitView> {
         person.total = saved;
       }
     }
+    view.payments = buildPayments(room, view.split);
   }
   return view;
 }
@@ -128,7 +190,8 @@ export async function finalizeRoom(code: string, force: boolean): Promise<SplitV
       prisma.room.update({ where: { id: roomId }, data: { status: "FINALIZED", finalizedAt: new Date() } }),
     ]);
 
-    return { ...view, status: "FINALIZED", final: true };
+    // Re-read so the view includes payments (everyone starts as PENDING).
+    return getSplitView(code);
   });
 }
 
@@ -148,4 +211,51 @@ export async function reopenRoom(code: string) {
       prisma.room.update({ where: { id: room.id }, data: { status: "OPEN", finalizedAt: null } }),
     ]);
   });
+}
+
+/**
+ * Host marks someone as paid (or undoes it). We can't see UPI payments
+ * ourselves: a web page gets no "payment succeeded" signal back from the UPI
+ * app, so the host checks their bank app and confirms here.
+ * When everyone who owes something has paid, the room becomes CLOSED (settled).
+ */
+export async function setPaid(code: string, participantId: string, paid: boolean) {
+  const found = await prisma.room.findUnique({ where: { code }, select: { id: true } });
+  if (!found) throw new AppError(404, "ROOM_NOT_FOUND", "Room not found");
+  const roomId = found.id;
+
+  return roomLock.run(roomId, async () => {
+    const room = await prisma.room.findUniqueOrThrow({ where: { id: roomId }, include: { participants: true } });
+    if (room.status === "OPEN") throw new AppError(409, "NOT_FINALIZED", "Finalize the split before marking payments");
+    const participant = room.participants.find((p) => p.id === participantId);
+    if (!participant) throw new AppError(404, "PARTICIPANT_NOT_FOUND", "Participant not found in this room");
+    if (participant.isHost) throw new AppError(400, "HOST_DOES_NOT_PAY", "The host paid the bill, so they don't owe anyone");
+    if (paid && !participant.amountDue) throw new AppError(400, "NOTHING_DUE", `${participant.name} doesn't owe anything`);
+
+    await prisma.participant.update({
+      where: { id: participantId },
+      data: paid ? { paymentStatus: "PAID", paidAt: new Date() } : { paymentStatus: "PENDING", paidAt: null },
+    });
+
+    // Settled = nobody with something to pay is still PENDING.
+    const stillOwing = await prisma.participant.count({
+      where: { roomId, isHost: false, amountDue: { gt: 0 }, paymentStatus: "PENDING" },
+    });
+    const status = stillOwing === 0 ? "CLOSED" : "FINALIZED";
+    if (status !== room.status) await prisma.room.update({ where: { id: roomId }, data: { status } });
+
+    const view = await getSplitView(code);
+    const payment = view.payments!.people.find((p) => p.participantId === participantId)!;
+    return { view, payment };
+  });
+}
+
+/** The UPI link for one person (for their payment QR code). */
+export async function getUpiLink(code: string, participantId: string): Promise<string> {
+  const view = await getSplitView(code);
+  if (!view.payments) throw new AppError(409, "NOT_FINALIZED", "The split isn't finalized yet");
+  const person = view.payments.people.find((p) => p.participantId === participantId);
+  if (!person) throw new AppError(404, "PARTICIPANT_NOT_FOUND", "Participant not found in this room");
+  if (!person.upiLink) throw new AppError(404, "NOTHING_TO_PAY", "This person has nothing to pay");
+  return person.upiLink;
 }

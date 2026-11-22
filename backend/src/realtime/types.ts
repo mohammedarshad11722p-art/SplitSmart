@@ -3,7 +3,7 @@
 // `socket.emit("item:claim", ...)` (typo) or a wrong payload is a compile
 // error instead of a silent bug. The frontend will reuse this file in step 7.
 import type { ParticipantDto, RoomState } from "../services/room.service";
-import type { SplitView } from "../services/settle.service";
+import type { PaymentsView, PersonPayment, SplitView } from "../services/settle.service";
 
 /** Who this socket is. Set once by the auth middleware, read by every handler. */
 export interface SocketData {
@@ -63,6 +63,8 @@ export interface ServerToClientEvents {
   "room:finalized": (view: SplitView) => void;
   /** Host unlocked the split to fix something: back to claiming. */
   "room:reopened": () => void;
+  /** Host marked someone paid/unpaid. `status` becomes CLOSED once everyone has paid. */
+  "payment:updated": (payload: { payment: PersonPayment; payments: PaymentsView; status: SplitView["status"] }) => void;
   /** Sent to a removed participant just before their socket is closed. */
   "session:ended": (payload: { reason: "removed" }) => void;
 }

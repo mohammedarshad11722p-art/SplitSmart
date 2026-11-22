@@ -94,9 +94,30 @@ export interface PersonSplit {
   total: number;
 }
 
+export interface PersonPayment {
+  participantId: string;
+  /** HOST = paid the restaurant. NOTHING_DUE = share is ₹0. */
+  status: "PENDING" | "PAID" | "HOST" | "NOTHING_DUE";
+  amount: number;
+  paidAt: string | null;
+  upiLink: string | null;
+}
+
+export interface PaymentsView {
+  payee: { name: string; upiId: string };
+  people: PersonPayment[];
+  dueCount: number;
+  paidCount: number;
+  collected: number;
+  outstanding: number;
+  settled: boolean;
+}
+
 export interface SplitView {
   status: RoomStatus;
   final: boolean;
+  /** Only after finalize. */
+  payments: PaymentsView | null;
   split: {
     people: PersonSplit[];
     unclaimedItems: Array<{ itemId: string; name: string; total: number }>;
@@ -136,5 +157,6 @@ export interface ServerToClientEvents {
   "room:updated": (room: RoomState["room"]) => void;
   "room:finalized": (view: SplitView) => void;
   "room:reopened": () => void;
+  "payment:updated": (payload: { payment: PersonPayment; payments: PaymentsView; status: RoomStatus }) => void;
   "session:ended": (payload: { reason: "removed" }) => void;
 }

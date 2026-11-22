@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import { API_URL } from "@/lib/api";
-import type { ClientToServerEvents, RoomState, ServerToClientEvents, SplitView } from "@/lib/types";
+import type { ClientToServerEvents, PaymentsView, RoomState, ServerToClientEvents, SplitView } from "@/lib/types";
 
 type RoomSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 export type ConnectionStatus = "connecting" | "live" | "reconnecting" | "invalid" | "removed";
@@ -13,6 +13,7 @@ export type ConnectionStatus = "connecting" | "live" | "reconnecting" | "invalid
 interface Options {
   onFinalized?: (view: SplitView) => void;
   onReopened?: () => void;
+  onPaymentUpdated?: (payments: PaymentsView) => void;
   onError?: (message: string) => void;
 }
 
@@ -79,6 +80,19 @@ export function useRoom(code: string, sessionToken: string | null, options: Opti
     socket.on("room:finalized", (view) => optionsRef.current.onFinalized?.(view));
     socket.on("room:reopened", () => optionsRef.current.onReopened?.());
     socket.on("session:ended", () => setStatus("removed"));
+    socket.on("payment:updated", ({ payment, payments, status }) => {
+      setState(
+        (s) =>
+          s && {
+            ...s,
+            room: { ...s.room, status },
+            participants: s.participants.map((p) =>
+              p.id === payment.participantId ? { ...p, paymentStatus: payment.status === "PAID" ? "PAID" : "PENDING" } : p,
+            ),
+          },
+      );
+      optionsRef.current.onPaymentUpdated?.(payments);
+    });
 
     return () => {
       socket.removeAllListeners();

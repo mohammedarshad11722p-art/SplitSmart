@@ -123,4 +123,13 @@ export const api = {
   reopen(code: string, hostToken: string) {
     return request<SplitView>(`/rooms/${code}/reopen`, { method: "POST", body: {}, hostToken });
   },
+
+  // ── Payments ──
+  setPaid(code: string, hostToken: string, participantId: string, paid: boolean) {
+    return request<SplitView>(`/rooms/${code}/participants/${participantId}/payment`, { method: "PATCH", body: { paid }, hostToken });
+  },
+  /** PNG of the person's UPI link. `v` busts the browser cache if the amount changes. */
+  payQrUrl(code: string, participantId: string, amount: number) {
+    return `${API_URL}/api/rooms/${code}/participants/${participantId}/pay-qr?v=${amount}`;
+  },
 };

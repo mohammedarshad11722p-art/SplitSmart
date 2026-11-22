@@ -1,7 +1,7 @@
 // Location: backend/scripts/simulate-room.ts
 // Simulates a real dinner: a host and 3 friends on their own "phones"
 // (socket connections) claiming items at the same time.
-// It's your test for step 5 until the frontend exists.
+// It checks the whole backend flow (steps 4-8) in a few seconds.
 //
 //   1. start the server:   npm run dev
 //   2. in another terminal: npm run simulate
@@ -79,6 +79,7 @@ function connectPhone(label: string, roomCode: string, sessionToken: string) {
     socket.on("session:ended", () => events.push("session:ended"));
     socket.on("room:finalized", () => events.push("room:finalized"));
     socket.on("room:reopened", () => events.push("room:reopened"));
+    socket.on("payment:updated", (p) => events.push(`payment:${p.payment.status}`));
     socket.on("connect_error", (err) => reject(new Error(`${label}: ${err.message}`)));
   });
 }
@@ -234,6 +235,45 @@ async function main() {
   check("phones were told", priya.events.includes("room:reopened"));
   const again = await claim(priya.socket, { itemId: naan!.id, claimed: true });
   check("claiming works again", again.ok);
+
+  // ── Step 8: payments ──
+  console.log("\n13. UPI payment links");
+  const settled0 = await api<SplitView>("POST", `/rooms/${code}/finalize`, { force: true }, H);
+  const pay = settled0.payments!;
+  const hostPay = pay.people.find((p) => p.status === "HOST")!;
+  const owing = pay.people.filter((p) => p.status === "PENDING");
+  check("finalize returns payments, everyone starts unpaid", !!pay && pay.paidCount === 0 && owing.length === pay.dueCount);
+  check("the host owes nobody (no link)", hostPay.participantId === room.me.id && hostPay.upiLink === null);
+  const g0 = owing[0]!;
+  check(
+    "each guest gets a UPI link to the host for their exact amount",
+    owing.every((g) => g.upiLink!.startsWith("upi://pay?pa=arshad@okaxis&pn=Arshad&am=" + (g.amount / 100).toFixed(2) + "&cu=INR")),
+  );
+  console.log(`     ${g0.upiLink}`);
+  const qr = await fetch(`${API}/api/rooms/${code}/participants/${g0.participantId}/pay-qr`);
+  check("payment QR is a PNG", qr.status === 200 && qr.headers.get("content-type") === "image/png");
+  check(
+    "no payment QR for the host",
+    (await fetch(`${API}/api/rooms/${code}/participants/${hostPay.participantId}/pay-qr`)).status === 404,
+  );
+
+  console.log("\n14. Host marks people paid");
+  const payPath = (id: string) => `/rooms/${code}/participants/${id}/payment`;
+  check("a guest can't mark payments", (await errorCodeOf(api("PATCH", payPath(g0.participantId), { paid: true }))) === "HOST_TOKEN_MISSING");
+  check("the host can't be marked paid", (await errorCodeOf(api("PATCH", payPath(hostPay.participantId), { paid: true }, H))) === "HOST_DOES_NOT_PAY");
+  const afterOne = await api<SplitView>("PATCH", payPath(g0.participantId), { paid: true }, H);
+  await wait(300);
+  check("marked paid, collected amount updated", afterOne.payments!.paidCount === 1 && afterOne.payments!.collected === g0.amount);
+  check("every phone was told", priya.events.includes("payment:PAID") && host.events.includes("payment:PAID"));
+  check("can't reopen once someone has paid", (await errorCodeOf(api("POST", `/rooms/${code}/reopen`, {}, H))) === "PAYMENTS_STARTED");
+  const undone = await api<SplitView>("PATCH", payPath(g0.participantId), { paid: false }, H);
+  check("host can undo a mistake", undone.payments!.paidCount === 0);
+  let last = undone;
+  for (const g of owing) last = await api<SplitView>("PATCH", payPath(g.participantId), { paid: true }, H);
+  check("everyone paid → settled, room CLOSED", last.payments!.settled && last.status === "CLOSED" && last.payments!.outstanding === 0);
+  check("collected = everything the guests owed", last.payments!.collected === owing.reduce((s, g) => s + g.amount, 0));
+  const reopenedOne = await api<SplitView>("PATCH", payPath(g0.participantId), { paid: false }, H);
+  check("undo after settling → back to FINALIZED", reopenedOne.status === "FINALIZED" && !reopenedOne.payments!.settled);
 
   [host, priya, rahulAgain].forEach((p) => p.socket.disconnect());
   console.log(failures === 0 ? "\n🎉 All checks passed\n" : `\n💥 ${failures} check(s) failed\n`);

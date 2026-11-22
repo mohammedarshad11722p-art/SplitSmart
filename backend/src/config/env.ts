@@ -35,6 +35,20 @@ const envSchema = z
         if (!e[key]) ctx.addIssue({ code: "custom", path: [key], message: "Required when AI_PROVIDER=claude" });
       }
     }
+    // Catch the classic deploy mistake: forgetting to point FRONTEND_URL at the
+    // real site. CORS would block every request and the QR codes would point
+    // at localhost, which only "works" on the developer's own laptop.
+    if (e.NODE_ENV === "production") {
+      for (const origin of e.FRONTEND_URL.split(",").map((o) => o.trim())) {
+        if (!/^https:\/\/[^/]+\/?$/.test(origin)) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["FRONTEND_URL"],
+            message: `In production this must be your https site, like https://splitsmart.vercel.app (got "${origin}")`,
+          });
+        }
+      }
+    }
   });
 
 const parsed = envSchema.safeParse(process.env);

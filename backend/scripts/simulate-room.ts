@@ -9,6 +9,7 @@
 // Works with AI_PROVIDER=mock or claude: it creates a manual bill, no photo needed.
 import { io, type Socket } from "socket.io-client";
 import type { RoomState } from "../src/services/room.service";
+import type { SplitView } from "../src/services/settle.service";
 import type { AckResponse, ClientToServerEvents, ItemClaims, ServerToClientEvents } from "../src/realtime/types";
 
 const API = process.env.API_URL ?? "http://localhost:4000";
@@ -20,6 +21,12 @@ function check(label: string, condition: boolean) {
   if (!condition) failures++;
 }
 
+class ApiError extends Error {
+  constructor(public status: number, public code: string, message: string) {
+    super(message);
+  }
+}
+
 async function api<T>(method: string, path: string, body?: unknown, headers: Record<string, string> = {}): Promise<T> {
   const res = await fetch(`${API}/api${path}`, {
     method,
@@ -27,9 +34,19 @@ async function api<T>(method: string, path: string, body?: unknown, headers: Rec
     body: body ? JSON.stringify(body) : undefined,
   });
   if (res.status === 204) return undefined as T; // "No Content": success with no body
-  const json = (await res.json()) as T & { error?: { message: string } };
-  if (!res.ok) throw new Error(`${method} ${path} → ${res.status}: ${json.error?.message}`);
+  const json = (await res.json()) as T & { error?: { code: string; message: string } };
+  if (!res.ok) throw new ApiError(res.status, json.error?.code ?? "?", `${method} ${path} → ${res.status}: ${json.error?.message}`);
   return json;
+}
+
+/** Calls the API and returns the error code it fails with (or "OK"). */
+async function errorCodeOf(promise: Promise<unknown>) {
+  try {
+    await promise;
+    return "OK";
+  } catch (err) {
+    return err instanceof ApiError ? err.code : String(err);
+  }
 }
 
 /** Connects one "phone" and resolves once it has received the first room snapshot. */
@@ -60,6 +77,8 @@ function connectPhone(label: string, roomCode: string, sessionToken: string) {
     socket.on("participant:joined", (p) => events.push(`joined:${p.name}`));
     socket.on("participant:removed", () => events.push("participant:removed"));
     socket.on("session:ended", () => events.push("session:ended"));
+    socket.on("room:finalized", () => events.push("room:finalized"));
+    socket.on("room:reopened", () => events.push("room:reopened"));
     socket.on("connect_error", (err) => reject(new Error(`${label}: ${err.message}`)));
   });
 }
@@ -168,13 +187,53 @@ async function main() {
   check("Rahul's phone was told and disconnected", rahulAgain.events.includes("session:ended") && !rahulAgain.socket.connected);
 
   // ── Final table ──
-  const final = await api<RoomState>("GET", `/rooms/${code}`);
-  const names = new Map(final.participants.map((p) => [p.id, p.name]));
-  console.log("\nFinal claims:");
-  for (const it of final.bill.items) {
+  const claimsNow = await api<RoomState>("GET", `/rooms/${code}`);
+  const names = new Map(claimsNow.participants.map((p) => [p.id, p.name]));
+  console.log("\nClaims so far:");
+  for (const it of claimsNow.bill.items) {
     console.log(`  ${it.name.padEnd(16)} ${it.claimedBy.map((id) => names.get(id)).join(", ") || "(unclaimed)"}`);
   }
-  check("Rahul is gone from every item", !final.bill.items.some((i) => i.claimedBy.includes(guests.Rahul!.id)));
+  check("Rahul is gone from every item", !claimsNow.bill.items.some((i) => i.claimedBy.includes(guests.Rahul!.id)));
+
+  // ── Step 6: the split ──
+  console.log("\n10. Live split preview");
+  const preview = await api<SplitView>("GET", `/rooms/${code}/split`);
+  const previewSum = preview.split.people.reduce((s, p) => s + p.total, 0);
+  check("preview adds up to the bill exactly", preview.split.balanced && previewSum === preview.split.grandTotal);
+  check("bill total isn't ₹0 (manual bills calculate their own total)", preview.split.grandTotal > 0);
+  check("no warnings while every item is claimed", preview.warnings.unclaimedItems.length === 0);
+  for (const p of preview.split.people) console.log(`     ${p.name.padEnd(8)} owes ₹${(p.total / 100).toFixed(2)}`);
+
+  console.log("\n11. Finalize with an unclaimed item");
+  await api("POST", `/bills/${bill.id}/items`, { name: "Extra Raita", quantity: 1, unitPrice: 6000 }, H);
+  check(
+    "finalize is blocked with an UNCLAIMED_ITEMS warning",
+    (await errorCodeOf(api("POST", `/rooms/${code}/finalize`, {}, H))) === "UNCLAIMED_ITEMS",
+  );
+  check("a guest can't finalize", (await errorCodeOf(api("POST", `/rooms/${code}/finalize`, { force: true }))) === "HOST_TOKEN_MISSING");
+  const final = await api<SplitView>("POST", `/rooms/${code}/finalize`, { force: true }, H);
+  await wait(300);
+  check("host confirmed → finalized", final.final && final.status === "FINALIZED");
+  check("every phone was told", host.events.includes("room:finalized") && priya.events.includes("room:finalized"));
+  const lockedRoom = await api<RoomState>("GET", `/rooms/${code}`);
+  const savedSum = lockedRoom.participants.reduce((s, p) => s + (p.amountDue ?? 0), 0);
+  check("saved amounts add up to the bill exactly", savedSum === lockedRoom.bill.grandTotal);
+  const raitaShares = final.split.people.map((p) => p.items.find((i) => i.name === "Extra Raita")?.share ?? 0);
+  check("the unclaimed raita was split among everyone", raitaShares.every((x) => x > 0));
+  const late = await claim(priya.socket, { itemId: naan!.id, claimed: false });
+  check("claims are locked after finalize", !late.ok && late.error.code === "ROOM_CLOSED");
+  check("nobody new can join", (await errorCodeOf(api("POST", `/rooms/${code}/join`, { name: "Latecomer" }))) === "ROOM_CLOSED");
+  check("items can't be edited", (await errorCodeOf(api("PATCH", `/bills/${bill.id}/items/${naan!.id}`, { unitPrice: 1 }, H))) === "BILL_LOCKED");
+  for (const p of final.split.people) console.log(`     ${p.name.padEnd(8)} owes ₹${(p.total / 100).toFixed(2)}`);
+
+  console.log("\n12. Host reopens to fix a mistake");
+  await api("POST", `/rooms/${code}/reopen`, {}, H);
+  await wait(300);
+  const reopened = await api<RoomState>("GET", `/rooms/${code}`);
+  check("room is open again and amounts are cleared", reopened.room.status === "OPEN" && reopened.participants.every((p) => p.amountDue === null));
+  check("phones were told", priya.events.includes("room:reopened"));
+  const again = await claim(priya.socket, { itemId: naan!.id, claimed: true });
+  check("claiming works again", again.ok);
 
   [host, priya, rahulAgain].forEach((p) => p.socket.disconnect());
   console.log(failures === 0 ? "\n🎉 All checks passed\n" : `\n💥 ${failures} check(s) failed\n`);

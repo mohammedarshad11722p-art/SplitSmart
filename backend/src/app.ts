@@ -6,6 +6,7 @@ import express from "express";
 import helmet from "helmet";
 import { env } from "./config/env";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
+import { billsRouter } from "./routes/bills.routes";
 import { healthRouter } from "./routes/health.routes";
 
 export function createApp() {
@@ -21,11 +22,11 @@ export function createApp() {
       credentials: true,
     }),
   );
-  app.use(express.json({ limit: "1mb" })); // bill images use multipart, not JSON
+  app.use(express.json({ limit: "1mb" })); // bill images use multipart (multer), not JSON
 
   // ── Routes ──
   app.use("/api/health", healthRouter);
-  // step 3: app.use("/api/bills", billsRouter);
+  app.use("/api/bills", billsRouter);
   // step 4: app.use("/api/rooms", roomsRouter);
 
   // ── Errors (must be registered last) ──

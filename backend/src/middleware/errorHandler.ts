@@ -3,7 +3,8 @@
 //   { "error": { "code": "NOT_FOUND", "message": "Room not found" } }
 // so the frontend only has to handle one error shape.
 import type { NextFunction, Request, Response } from "express";
-import { ZodError } from "zod";
+import multer from "multer";
+import { ZodError, z } from "zod";
 import { env } from "../config/env";
 
 /** Throw this from routes/services for expected errors (404, 400, 403...). */
@@ -40,8 +41,14 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
 
   if (err instanceof ZodError) {
     return res.status(400).json({
-      error: { code: "VALIDATION_ERROR", message: "Invalid request", details: err.flatten() },
+      error: { code: "VALIDATION_ERROR", message: "Invalid request", details: z.flattenError(err) },
     });
+  }
+
+  // File upload problems (too big, wrong field name...)
+  if (err instanceof multer.MulterError) {
+    const message = err.code === "LIMIT_FILE_SIZE" ? "Image is too large (max 10 MB)" : err.message;
+    return res.status(400).json({ error: { code: "UPLOAD_ERROR", message } });
   }
 
   // Malformed JSON body from express.json()

@@ -16,7 +16,10 @@ export function createApp() {
   // Render sits behind a proxy; this makes req.ip the real client IP.
   app.set("trust proxy", 1);
 
-  app.use(helmet()); // sensible security headers
+  // Sensible security headers. CORP is relaxed to "cross-origin" because the
+  // frontend (another origin) shows our room QR PNG in an <img>; helmet's
+  // default "same-origin" makes the browser block it.
+  app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
   app.use(
     cors({
       origin: env.corsOrigins, // only our frontend may call the API from a browser

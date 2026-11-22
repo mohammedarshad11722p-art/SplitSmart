@@ -1,0 +1,24 @@
+/* Location: frontend/app/globals.css */
+@import "tailwindcss";
+
+/* Tailwind v4: theme tweaks live here instead of tailwind.config.ts */
+@theme {
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background: #fffaf5;
+  color: #1c1917;
+  -webkit-tap-highlight-color: transparent; /* no grey flash when tapping on phones */
+}
+
+/* Hide the number spinners on amount inputs */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

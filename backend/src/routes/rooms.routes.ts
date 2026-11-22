@@ -7,6 +7,9 @@
 // GET    /api/rooms/:code/qr                         QR code PNG of join link  (anyone with the code)
 // PATCH  /api/rooms/:code                            edit host name / UPI ID   (host)
 // DELETE /api/rooms/:code/participants/:participantId remove a participant    (host)
+// GET    /api/rooms/:code/split                      live split preview / final amounts (anyone with the code)
+// POST   /api/rooms/:code/finalize                   lock the split, save amounts (host)
+// POST   /api/rooms/:code/reopen                     unlock to fix mistakes      (host)
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import QRCode from "qrcode";
@@ -14,7 +17,8 @@ import { z } from "zod";
 import { AppError, asyncHandler } from "../middleware/errorHandler";
 import { requireHost, requireRoomHost } from "../middleware/hostAuth";
 import * as roomService from "../services/room.service";
-import { disconnectParticipant, emitToRoom } from "../realtime/broadcast";
+import * as settleService from "../services/settle.service";
+import { broadcastRoomState, disconnectParticipant, emitToRoom, getIo } from "../realtime/broadcast";
 import { normalizeRoomCode } from "../utils/roomCode";
 
 export const roomsRouter = Router();
@@ -57,6 +61,7 @@ const personName = z
 
 const createSchema = z.object({ billId: z.string().min(1), hostName: personName, hostUpiId: upiIdSchema });
 const joinSchema = z.object({ name: personName, sessionToken: z.string().min(20).max(200).optional() });
+const finalizeSchema = z.object({ force: z.boolean().optional().default(false) });
 const updateSchema = z
   .object({ hostName: personName, hostUpiId: upiIdSchema })
   .partial()
@@ -140,5 +145,37 @@ roomsRouter.delete(
     emitToRoom(req.app, code, "participant:removed", { participantId });
     await disconnectParticipant(req.app, code, participantId); // kick their phone out
     res.status(204).end();
+  }),
+);
+
+roomsRouter.get(
+  "/:code/split",
+  asyncHandler(async (req, res) => {
+    res.json(await settleService.getSplitView(req.params.code!));
+  }),
+);
+
+roomsRouter.post(
+  "/:code/finalize",
+  requireRoomHost,
+  asyncHandler(async (req, res) => {
+    const { force } = finalizeSchema.parse(req.body ?? {});
+    const code = req.params.code!;
+    const view = await settleService.finalizeRoom(code, force);
+    emitToRoom(req.app, code, "room:finalized", view);
+    await broadcastRoomState(getIo(req.app), code); // status + amountDue for every phone
+    res.json(view);
+  }),
+);
+
+roomsRouter.post(
+  "/:code/reopen",
+  requireRoomHost,
+  asyncHandler(async (req, res) => {
+    const code = req.params.code!;
+    await settleService.reopenRoom(code);
+    emitToRoom(req.app, code, "room:reopened");
+    await broadcastRoomState(getIo(req.app), code);
+    res.json(await settleService.getSplitView(code));
   }),
 );

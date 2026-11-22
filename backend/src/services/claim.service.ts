@@ -3,9 +3,7 @@
 import { prisma } from "../lib/prisma";
 import { AppError } from "../middleware/errorHandler";
 import type { ItemClaims } from "../realtime/types";
-import { KeyedLock } from "../utils/keyedLock";
-
-const roomLock = new KeyedLock();
+import { roomLock } from "./roomLock";
 
 export interface SetClaimInput {
   roomId: string;

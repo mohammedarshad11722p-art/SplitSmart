@@ -8,7 +8,7 @@ import { uploadBillImage } from "../lib/cloudinary";
 import { prisma } from "../lib/prisma";
 import { AppError } from "../middleware/errorHandler";
 import { generateToken, hashToken } from "../utils/tokens";
-import { checkTotals, normalizeParsedBill, type BillTotals, type TotalsCheck } from "./billMath";
+import { checkTotals, normalizeParsedBill, sumItems, type BillTotals, type TotalsCheck } from "./billMath";
 
 type BillWithItems = Bill & { items: Item[] };
 
@@ -138,13 +138,29 @@ async function assertEditable(billId: string) {
   }
 }
 
-/** Re-run validation after any edit and store the mismatch flag. */
+/**
+ * Re-run validation after any edit and store the mismatch flag.
+ *
+ * Bills with no printed totals (MANUAL, or FAILED when the AI couldn't read
+ * the photo) have nothing to check against, so their subtotal and grand total
+ * are CALCULATED from the items: subtotal = sum of items, grand total =
+ * subtotal + tax + service − discount. (Added in step 6: without this, a
+ * manual bill kept a grand total of ₹0 and the split said everyone owes ₹0.)
+ */
 async function refreshValidation(billId: string): Promise<BillDto> {
   const bill = await prisma.bill.findUniqueOrThrow({ where: { id: billId }, include: { items: true } });
-  const check = checkTotals(bill, bill.items);
+
+  const autoTotals = bill.parseStatus === "MANUAL" || bill.parseStatus === "FAILED";
+  const totals = { subtotal: bill.subtotal, grandTotal: bill.grandTotal };
+  if (autoTotals) {
+    totals.subtotal = sumItems(bill.items);
+    totals.grandTotal = Math.max(0, totals.subtotal + bill.tax + bill.serviceCharge - bill.discount);
+  }
+
+  const check = checkTotals({ ...bill, ...totals }, bill.items);
   const updated = await prisma.bill.update({
     where: { id: billId },
-    data: { hasMismatch: !check.itemsMatchSubtotal, mismatchAmount: check.itemsDiff },
+    data: { ...totals, hasMismatch: !check.itemsMatchSubtotal, mismatchAmount: check.itemsDiff },
     include: { items: true },
   });
   return toBillDto(updated);
